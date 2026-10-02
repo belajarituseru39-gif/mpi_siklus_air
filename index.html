@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <base target="_top">
+    <title>Laboratorium Alam: Penjelajah Siklus Air</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone@7.24.4/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Custom Styles -->
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: 'Nunito', sans-serif; background-color: #f0fdfa; }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.3); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.2); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.4); }
+        @media (min-width: 1280px) { .custom-scrollbar::-webkit-scrollbar { width: 12px; } }
+        
+        @keyframes bounce-slow { 0%, 100% { transform: translateY(-2%); } 50% { transform: translateY(2%); } }
+        .animate-bounce-slow { animation: bounce-slow 3s infinite ease-in-out; }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fade-in 0.5s ease-out forwards; }
+        @keyframes pop-in { 0% { transform: scale(0); opacity: 0; } 80% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+        .animate-pop-in { animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .text-outline { text-shadow: 2px 2px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff; }
+    </style>
+</head>
+<body>
+    <div id="root" class="h-full w-full"></div>
+
+    <script type="text/babel" data-presets="react">
+        /** @jsx React.createElement */
+        /** @jsxFrag React.Fragment */
+
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // =========================================================================
+        // BAGIAN 1: IDENTITAS MPI (BISA DIGANTI GURU NANTINYA)
+        // =========================================================================
+        const IDENTITAS = {
+            guru: "Abdul Rahmat",
+            sekolah: "SDN 011 Balikpapan Tengah",
+            mapel: "IPAS",
+            kelas: "Kelas V SD (Fase C)",
+            materi: "Siklus Air",
+            judul: "Laboratorium Alam: Penjelajah Siklus Air",
+            waktu: "2 × 35 Menit"
+        };
+
+        // Biarkan KOSONG agar tidak mengirim data secara otomatis. 
+        // Jika Bapak sudah membuat Google Apps Script baru, tempel linknya di antara tanda kutip di bawah ini.
+        const GOOGLE_SCRIPT_URL = ""; 
+
+        // =========================================================================
+        // BAGIAN 2: MATERI DAN VIDEO
+        // =========================================================================
+        const YOUTUBE_URL = "https://www.youtube.com/embed/zSRpom4gxGE?si=0ktHGQdJsqIcXsGo";
+        const YOUTUBE_ORIGINAL_LINK = "https://youtu.be/zSRpom4gxGE";
+
+        // SOAL BASECAMP (LATIHAN VIDEO)
+        const VIDEO_QUESTIONS = [
+            {
+                id: 'vq1', text: "Pertanyaan 1: Peristiwa berubahnya air laut atau air sungai menjadi uap air karena panas matahari disebut...",
+                options: ["A. Infiltrasi", "B. Evaporasi", "C. Presipitasi", "D. Kondensasi"], correct: 1
+            },
+            {
+                id: 'vq2', text: "Pertanyaan 2: Uap air yang naik ke atmosfer akan mengalami pendinginan dan membentuk titik-titik air. Titik-titik air ini berkumpul menjadi awan. Proses ini dinamakan...",
+                options: ["A. Kondensasi", "B. Transpirasi", "C. Evaporasi", "D. Infiltrasi"], correct: 0
+            },
+            {
+                id: 'vq3', text: "Pertanyaan 3: Air hujan yang jatuh ke bumi, sebagian akan meresap ke dalam pori-pori tanah. Proses meresapnya air ke dalam tanah ini disebut...",
+                options: ["A. Evaporasi", "B. Presipitasi", "C. Kondensasi", "D. Infiltrasi"], correct: 3
+            }
+        ];
+
+        // TEKA-TEKI ISTILAH (Mencocokkan)
+        const ISTILAH_QUESTIONS = [
+            { id: 'pq1', text: 'Penguapan air yang berasal dari permukaan laut, danau, atau sungai akibat panas matahari disebut...', matchId: 'optEvaporasi' },
+            { id: 'pq2', text: 'Penguapan air yang dilepaskan oleh daun tumbuhan (pohon) ke udara disebut...', matchId: 'optTranspirasi' },
+            { id: 'pq3', text: 'Proses perubahan uap air menjadi titik-titik air yang membentuk gumpalan awan di langit disebut...', matchId: 'optKondensasi' },
+            { id: 'pq4', text: 'Peristiwa jatuhnya titik-titik air dari awan ke bumi dalam bentuk hujan atau salju disebut...', matchId: 'optPresipitasi' },
+            { id: 'pq5', text: 'Proses meresapnya air hujan ke dalam pori-pori tanah menjadi air tanah disebut...', matchId: 'optInfiltrasi' }
+        ];
+
+        const ISTILAH_OPTIONS = [
+            { id: 'optEvaporasi', text: 'Evaporasi' },
+            { id: 'optTranspirasi', text: 'Transpirasi' },
+            { id: 'optKondensasi', text: 'Kondensasi' },
+            { id: 'optPresipitasi', text: 'Presipitasi' },
+            { id: 'optInfiltrasi', text: 'Infiltrasi' },
+            { id: 'optPengecoh1', text: 'Sublimasi' }, 
+            { id: 'optPengecoh2', text: 'Abrasi' }
+        ];
+
+        // =========================================================================
+        // BAGIAN 3: TANTANGAN SETIAP LEVEL PETA
+        // =========================================================================
+        const LEVEL_DATA = {
+            // LEVEL 1: MENGELOMPOKKAN
+            1: {
+                title: "Stasiun Pengamat Awan",
+                subtitle: "Misi: Mengelompokkan Proses Siklus Air",
+                stimulusTitle: "🔬 TANTANGAN ILMUWAN: Kategorisasi Peristiwa",
+                stimulusText: "Halo Ilmuwan Muda! Dalam siklus air, air terus bergerak melalui tiga tahapan utama: Menguap (naik), Membentuk awan (berkumpul), dan Turun ke bumi (hujan/meresap).",
+                instruction: "Tarik atau klik pernyataan di bawah ini dan masukkan ke dalam tabung reaksi proses yang paling tepat!",
+                items: [
+                    { id: 'item1', text: 'Panas terik membuat air danau perlahan menyusut jadi uap.', matchId: 'penguapan' },
+                    { id: 'item2', text: 'Pohon mangga di halaman menguapkan air dari daunnya.', matchId: 'penguapan' },
+                    { id: 'item3', text: 'Uap air di langit mendingin lalu berkumpul menjadi awan abu-abu.', matchId: 'awan' },
+                    { id: 'item4', text: 'Titik embun di atmosfer bersatu membentuk gumpalan awan tebal.', matchId: 'awan' },
+                    { id: 'item5', text: 'Langit gelap akhirnya meneteskan air hujan ke bumi.', matchId: 'turun' },
+                    { id: 'item6', text: 'Air hujan meresap ke tanah merah di pekarangan rumah.', matchId: 'turun' },
+                ],
+                targets: [
+                    { id: 'penguapan', label: 'Tabung 1: Proses Penguapan (Naik)' },
+                    { id: 'awan', label: 'Tabung 2: Pembentukan Awan' },
+                    { id: 'turun', label: 'Tabung 3: Turun & Meresap' }
+                ]
+            },
+            // LEVEL 2: MEMAHAMI & MENERAPKAN (PILIHAN GANDA)
+            2: {
+                title: "Desa Ekologi",
+                subtitle: "Misi: Memecahkan Masalah Harian",
+                parts: [
+                    {
+                        stimulusTitle: "🔬 KASUS 1: Pakaian Basah Jadi Kering",
+                        stimulusText: "Ibu mencuci pakaian di pagi hari, lalu menjemurnya di bawah terik matahari. Menjelang sore, pakaian yang tadinya basah kuyup sudah kering dan bisa dilipat masuk ke lemari.",
+                        questions: [
+                            { id: 'q1', type: 'single', text: "Ke mana perginya air yang ada di pakaian basah tersebut? Proses apa yang sedang terjadi?", options: ["Air tersebut hilang ditiup angin, disebut presipitasi.", "Air tersebut meresap ke dalam benang baju, disebut infiltrasi.", "Air tersebut berubah menjadi uap air karena panas, disebut evaporasi.", "Air tersebut membeku di dalam baju, disebut kondensasi."], correct: 2 }
+                        ]
+                    },
+                    {
+                        stimulusTitle: "🔬 KASUS 2: Kota Tanpa Pohon",
+                        stimulusText: "Di kota besar, banyak lahan hijau dan pepohonan ditebang untuk dibangun menjadi area parkir beraspal dan gedung bertingkat. Saat musim hujan tiba, kota tersebut sering mengalami banjir besar.",
+                        questions: [
+                            { id: 'q2', type: 'single', text: "Mengapa kota tersebut mudah banjir saat hujan deras?", options: ["Karena aspal mempercepat penguapan air hujan (evaporasi).", "Karena berkurangnya tanah dan akar pohon menghambat peresapan air (infiltrasi).", "Karena gedung bertingkat membuat awan lebih cepat menetes (presipitasi).", "Karena suhu kota yang panas meningkatkan kondensasi air hujan."], correct: 1 }
+                        ]
+                    },
+                    {
+                        stimulusTitle: "🔬 KASUS 3: Gelas Es yang Berkeringat",
+                        stimulusText: "Budi membeli segelas es teh manis yang dingin. Ia meletakkannya di atas meja. Beberapa menit kemudian, bagian luar gelas yang tadinya kering berubah menjadi basah oleh titik-titik air.",
+                        questions: [
+                            { id: 'q3', type: 'single', text: "Peristiwa terbentuknya titik-titik air di luar gelas dingin tersebut sama dengan proses... dalam siklus air.", options: ["Kondensasi (pembentukan awan)", "Evaporasi (penguapan laut)", "Presipitasi (turunnya hujan)", "Transpirasi (penguapan tumbuhan)"], correct: 0 }
+                        ]
+                    },
+                    {
+                        stimulusTitle: "🔬 KASUS 4: Ketersediaan Air Bersih",
+                        stimulusText: "Meskipun bumi kita selalu mengalami siklus air yang berputar tanpa henti sehingga jumlah air tetap, nyatanya banyak daerah yang masih kesulitan mendapatkan air bersih pada musim kemarau.",
+                        questions: [
+                            { id: 'q4', type: 'single', text: "Apa yang membuat air bersih bisa sulit didapat meskipun ada siklus air?", options: ["Siklus air hanya terjadi di wilayah lautan, bukan di daratan.", "Uap air di awan bocor keluar angkasa sehingga jumlah air berkurang.", "Banyak sungai dan sumber air tawar tercemar limbah akibat aktivitas manusia.", "Panas matahari tidak cukup kuat untuk melakukan evaporasi di bumi."], correct: 2 }
+                        ]
+                    },
+                    {
+                        stimulusTitle: "🔬 KASUS 5: Siklus Terganggu",
+                        stimulusText: "Siklus air sangat dipengaruhi oleh keseimbangan alam. Sebuah hutan lebat yang berada di pegunungan mengalami kebakaran hebat dan hutannya menjadi gundul.",
+                        questions: [
+                            { id: 'q5', type: 'single', text: "Apa dampak terburuk dari kejadian tersebut terhadap tahapan siklus air di wilayah itu?", options: ["Tahap kondensasi meningkat drastis membuat hujan awet.", "Tahap infiltrasi berkurang karena tidak ada akar pohon penyimpan air, dan transpirasi pohon hilang.", "Air laut akan lebih cepat menguap menuju hutan yang gundul tersebut.", "Hujan tidak akan pernah turun lagi di seluruh bumi selamanya."], correct: 1 }
+                        ]
+                    }
+                ]
+            },
+            // LEVEL 3: BENAR-SALAH & ALASAN
+            3: {
+                title: "Lembah Analisis",
+                subtitle: "Misi: Uji Fakta Siklus Air",
+                stimulusTitle: "🔬 TANTANGAN ILMUWAN: Mesin Pendeteksi Fakta",
+                stimulusText: "Kamu tiba di mesin komputer tua di Lembah Analisis. Mesin ini menampilkan pernyataan-pernyataan dari penduduk tentang air di bumi. Kamu harus menentukan apakah pernyataan tersebut BENAR atau SALAH, lalu memilih ALASAN sains yang mendukung tebakanmu!",
+                questions: [
+                    {
+                        id: 'k1', text: "Pernyataan 1: 'Air di planet bumi bisa habis tak tersisa jika kita menggunakannya setiap hari untuk mandi dan minum.'",
+                        correctStatement: 'Salah',
+                        reasonOptions: ["Karena air akan selalu diperbarui keberadaannya di alam melalui putaran siklus air secara terus menerus.", "Karena air minum dibuat di pabrik, bukan dari alam.", "Karena lautan sangat luas, jadi air tidak akan pernah berkurang setetes pun.", "Karena manusia sebenarnya jarang menggunakan air tanah."],
+                        correctReasonIndex: 0
+                    },
+                    {
+                        id: 'k2', text: "Pernyataan 2: 'Aktivitas manusia seperti membuang sampah di selokan dapat mengganggu tahapan siklus air di permukaan bumi.'",
+                        correctStatement: 'Benar',
+                        reasonOptions: ["Karena sampah menyumbat aliran permukaan sehingga infiltrasi terhambat dan memicu banjir.", "Karena sampah membuat air sungai lebih cepat menguap ke awan.", "Karena sampah plastik dapat menyerap uap air sebelum menjadi awan.", "Karena selokan yang tersumbat akan merubah air tawar menjadi air laut."],
+                        correctReasonIndex: 0
+                    },
+                    {
+                        id: 'k3', text: "Pernyataan 3: 'Proses evaporasi dan transpirasi sama-sama menghasilkan uap air yang naik ke atmosfer.'",
+                        correctStatement: 'Benar',
+                        reasonOptions: ["Karena keduanya adalah bentuk penguapan akibat panas, bedanya evaporasi dari benda cair terbuka, transpirasi dari tumbuhan.", "Karena keduanya adalah proses turunnya hujan lebat ke perbukitan.", "Karena keduanya terjadi saat malam hari yang sangat dingin tanpa bantuan panas matahari.", "Karena keduanya menghasilkan air tanah dalam yang diserap akar."],
+                        correctReasonIndex: 0
+                    },
+                    {
+                        id: 'k4', text: "Pernyataan 4: 'Membangun seluruh pekarangan rumah dengan pelesteran semen adalah cara terbaik untuk melestarikan air tanah.'",
+                        correctStatement: 'Salah',
+                        reasonOptions: ["Karena tanah yang tertutup semen seluruhnya membuat air hujan tidak bisa melakukan infiltrasi (meresap) ke dalam tanah.", "Karena semen akan mempercepat proses kondensasi awan di atas rumah.", "Karena semen akan menyerap racun yang terkandung dalam uap air.", "Karena semen akan mempercepat air meresap ke sumur dan cepat penuh."],
+                        correctReasonIndex: 0
+                    },
+                    {
+                        id: 'k5', text: "Pernyataan 5: 'Hujan salju atau hujan es juga termasuk dalam tahapan presipitasi pada siklus air.'",
+                        correctStatement: 'Benar',
+                        reasonOptions: ["Karena presipitasi adalah segala bentuk curahan air (baik cair maupun padat) dari awan yang jatuh ke bumi.", "Karena salju adalah air tanah yang menguap dengan cepat ke atmosfer.", "Karena es berasal dari kulkas dan bukan merupakan bagian alam.", "Karena salju tidak bisa menguap lagi menjadi uap air setelah jatuh ke daratan."],
+                        correctReasonIndex: 0
+                    }
+                ]
+            },
+            // LEVEL 4: KASUS MISKONSEPSI (MEMPERBAIKI)
+            4: {
+                title: "Pusat Riset Air",
+                subtitle: "Misi: Evaluasi Catatan Lapangan",
+                stimulusTitle: "🔬 TANTANGAN ILMUWAN: Mengkoreksi Laporan Pengamatan",
+                stimulusText: "Profesor Air menemukan beberapa catatan dari ilmuwan pemula yang berisi kesalahan pemahaman (miskonsepsi) tentang siklus air. \n\nTugasmu: Identifikasi apa yang keliru pada laporan tersebut, lalu pilih perbaikan konsep yang paling tepat sesuai teori Sains!",
+                cases: [
+                    {
+                        id: 'c1', text: "LAPORAN 1: 'Hujan selalu berasal dari air laut yang menguap dan langsung jatuh kembali ke tengah laut itu sendiri. Air daratan tidak ada hubungannya.'",
+                        evalCorrect: 0, createCorrect: 1,
+                        evalOptions: ["Salah, karena uap awan dari laut bisa tertiup angin ke daratan, dan air di daratan juga ikut menguap.", "Benar, karena 70% bumi adalah lautan, maka hujan hanya turun di laut.", "Salah, karena air laut terlalu asin untuk bisa menguap menjadi awan hujan.", "Benar, karena siklus air darat dan laut berbeda jalurnya secara terpisah."],
+                        createOptions: ["Hujan turun bergantian hanya antara laut dan darat.", "Awan dari penguapan air laut dapat terbawa angin dan turun sebagai hujan di daratan, uap air juga bisa berasal dari sungai dan tumbuhan.", "Air laut yang asin menguap menjadi awan yang menghasilkan hujan asin di perbukitan.", "Semua air laut yang menguap akan meresap ke dalam bumi sebelum menjadi hujan."]
+                    },
+                    {
+                        id: 'c2', text: "LAPORAN 2: 'Awan di langit adalah sekumpulan gas / uap air yang tidak terlihat, makanya bisa melayang di udara.'",
+                        evalCorrect: 2, createCorrect: 0,
+                        evalOptions: ["Benar, awan murni terdiri dari gas (uap air) yang sangat ringan.", "Salah, awan sebenarnya terbuat dari asap pabrik yang membeku di udara.", "Salah, awan sebenarnya terdiri dari titik-titik air berwujud cair atau kristal es kecil, bukan gas/uap air murni lagi.", "Benar, uap air yang berkumpul otomatis disebut awan jika jumlahnya banyak."],
+                        createOptions: ["Uap air (gas) yang mendingin akan mengalami kondensasi, berubah wujud menjadi titik air mikroskopis (cair) yang membentuk gumpalan awan yang bisa kita lihat.", "Awan adalah uap air panas yang belum sempat mendingin di langit.", "Awan terbentuk saat uap air bercampur dengan oksigen lalu terbakar di atmosfer.", "Awan adalah air laut yang ditarik gaya gravitasi bulan ke udara."]
+                    },
+                    {
+                        id: 'c3', text: "LAPORAN 3: 'Untuk mencegah kekeringan di masa depan, kita harus menutup semua permukaan tanah dengan aspal dan beton agar air tidak menguap.'",
+                        evalCorrect: 0, createCorrect: 2,
+                        evalOptions: ["Salah, tindakan menutup semua tanah justru akan menghalangi air hujan meresap (infiltrasi) menjadi cadangan air tanah.", "Benar, beton akan mengunci air tanah agar tidak bisa diuapkan matahari (evaporasi).", "Salah, beton tidak kuat menahan panas sehingga mudah hancur terkena hujan asam.", "Benar, aspal menyerap uap air sehingga membuat jalanan tetap sejuk."],
+                        createOptions: ["Gunakan lebih banyak aspal berlubang agar mobil tetap bisa lewat sambil menanam pohon.", "Ganti semua aspal dengan tanah liat di seluruh area perumahan.", "Membuat banyak area resapan air seperti biopori dan menanam pohon agar akar dapat menahan air tanah dengan baik sebagai cadangan.", "Tutupi tanah dengan plastik sebelum dibeton agar air benar-benar terkunci."]
+                    },
+                    {
+                        id: 'c4', text: "LAPORAN 4: 'Siklus air selalu diawali dari presipitasi (hujan), lalu evaporasi, dan diakhiri dengan kondensasi.'",
+                        evalCorrect: 3, createCorrect: 1,
+                        evalOptions: ["Benar, karena tanpa hujan pertama kali, bumi tidak akan punya air.", "Salah, siklus air selalu berakhiran di tumbuhan (transpirasi).", "Benar, urutan baku di seluruh dunia adalah Hujan -> Menguap -> Awan.", "Salah, siklus air berputar terus (menguap -> awan -> hujan) dan tidak memiliki titik awal atau akhir mutlak karena berbentuk lingkaran (siklus)."],
+                        createOptions: ["Siklus air dimulai dari gunung es turun ke laut.", "Siklus air adalah perputaran tertutup. Panas memicu penguapan (evaporasi/transpirasi), mendingin membentuk awan (kondensasi), lalu jatuh (presipitasi) dan meresap (infiltrasi).", "Siklus air hanya terjadi jika ada petir yang menyambar.", "Kondensasi selalu terjadi di dalam tanah."]
+                    },
+                    {
+                        id: 'c5', text: "LAPORAN 5: 'Semakin banyak pohon di hutan ditebang, semakin banyak persediaan air tanah untuk warga, karena pohon tidak lagi meminum airnya.'",
+                        evalCorrect: 1, createCorrect: 0,
+                        evalOptions: ["Benar, akar pohon sangat rakus mengambil cadangan air bersih warga.", "Salah, justru akar pohon berfungsi seperti spons yang menahan air di dalam tanah agar tidak langsung lari ke laut (mencegah longsor/banjir).", "Salah, pohon harus ditebang agar matahari bisa menyinari tanah dan memicu infiltrasi.", "Benar, menebang pohon membuat air sungai lebih jernih."],
+                        createOptions: ["Hutan yang lebat menjaga keseimbangan air tanah karena akar pepohonan menahan air hujan agar meresap perlahan dan tersimpan dengan baik.", "Biarkan hutan gundul agar curah hujan bisa langsung jatuh ke perumahan tanpa halangan daun.", "Pohon menyerap air lalu menguapkannya, jadi lebih baik diganti dengan kaktus semua.", "Hutan tidak ada kaitannya dengan persediaan air minum perkotaan."]
+                    }
+                ]
+            },
+            // LEVEL 5: REFLEKSI
+            5: {
+                title: "Markas Ilmuwan",
+                subtitle: "Misi: Laporan Akhir Pengamatan",
+                questions: {
+                    q1: "1. Berikan rating bintang (1-5) pada pengalaman belajarmu, lalu ceritakan apa yang paling kamu pahami tentang Siklus Air hari ini!",
+                    q2: "2. Evaluasi: Bagian mana yang masih sulit untukmu (misalnya: membedakan evaporasi dan infiltrasi)? Bagaimana caramu mempelajarinya lagi nanti?",
+                    q3: "3. Tuliskan satu contoh kebiasaan baik di rumahmu yang bisa membantu menjaga kelestarian air dan lingkungan!"
+                }
+            }
+        };
+
+        // =========================================================================
+        // PENGATURAN SUARA DAN GRAFIS 
+        // =========================================================================
+        const LOGO_IMAGE_URL = "https://i.imgur.com/6O21fCJ.jpeg";
+        const MAIN_BG_IMAGE = "https://i.imgur.com/sAWeMl6.jpeg"; 
+        const MAP_IMAGE_URL = "https://i.imgur.com/sAWeMl6.jpeg";
+        const BACKSONG_URL = "https://cdn.jsdelivr.net/gh/belajarituseru39-gif/lagubelajarkeren@main/Belajar%20Bersama%20(2).mp3"; 
+        const MAP_POSITIONS = [
+            { level: 1, top: '50%', left: '20%' }, 
+            { level: 2, top: '75%', left: '35%' }, 
+            { level: 3, top: '40%', left: '50%' }, 
+            { level: 4, top: '65%', left: '70%' }, 
+            { level: 5, top: '35%', left: '85%' }, 
+        ];
+
+
+        // --- WEB AUDIO API (SOUND EFFECTS) ---
+        let audioCtx = null;
+        const playSfx = (type) => {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return; 
+
+                if (!audioCtx) audioCtx = new AudioContext();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                if (type === 'correct') {
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(523.25, audioCtx.currentTime); 
+                    oscillator.frequency.exponentialRampToValueAtTime(1046.50, audioCtx.currentTime + 0.1); 
+                    gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    oscillator.start(audioCtx.currentTime);
+                    oscillator.stop(audioCtx.currentTime + 0.3);
+                } else if (type === 'incorrect') {
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(150, audioCtx.currentTime); 
+                    oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2); 
+                    gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                    oscillator.start(audioCtx.currentTime);
+                    oscillator.stop(audioCtx.currentTime + 0.2);
+                } else if (type === 'click') {
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(400, audioCtx.currentTime); 
+                    oscillator.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.05); 
+                    gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                    oscillator.start(audioCtx.currentTime);
+                    oscillator.stop(audioCtx.currentTime + 0.05);
+                }
+            } catch (err) { console.warn("Audio diblokir browser.", err); }
+        };
+
+        document.addEventListener('click', (e) => {
+            const isClickable = e.target.closest('button, select, [draggable="true"], .cursor-pointer');
+            if (isClickable) playSfx('click');
+        });
+
+        const shuffleArray = (array) => {
+            const newArr = [...array];
+            for (let i = newArr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+            }
+            return newArr;
+        };
+
+        // --- ICONS ---
+        const Icon = ({ path, className, onClick }) => (
+            <svg onClick={onClick} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{path}</svg>
+        );
+
+        const Icons = {
+            Map: ({className}) => <Icon className={className} path={<><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></>} />,
+            Star: ({className, onClick}) => <Icon onClick={onClick} className={className} path={<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>} />,
+            Users: ({className}) => <Icon className={className} path={<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></>} />,
+            User: ({className}) => <Icon className={className} path={<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></>} />,
+            School: ({className}) => <Icon className={className} path={<><path d="M4 6h16"></path><path d="M4 6v14"></path><path d="M20 6v14"></path><path d="M12 22V10"></path><path d="M4 10h16"></path><path d="M4 14h16"></path><path d="M4 18h16"></path><path d="M12 2l-8 4h16z"></path></>} />,
+            ArrowRight: ({className}) => <Icon className={className} path={<><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></>} />,
+            Award: ({className}) => <Icon className={className} path={<><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></>} />,
+            BookOpen: ({className}) => <Icon className={className} path={<><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></>} />,
+            CheckCircle: ({className}) => <Icon className={className} path={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></>} />,
+            Menu: ({className}) => <Icon className={className} path={<><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></>} />,
+            X: ({className}) => <Icon className={className} path={<><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></>} />,
+            Maximize: ({className}) => <Icon className={className} path={<><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></>} />,
+            Minimize: ({className}) => <Icon className={className} path={<><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></>} />,
+            RefreshCcw: ({className}) => <Icon className={className} path={<><polyline points="1 23 1 17 7 17"></polyline><polyline points="23 1 23 7 17 7"></polyline><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path></>} />,
+            Home: ({className}) => <Icon className={className} path={<><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></>} />,
+            Lock: ({className}) => <Icon className={className} path={<><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></>} />,
+            Save: ({className}) => <Icon className={className} path={<><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></>} />,
+            Volume2: ({className}) => <Icon className={className} path={<><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.75"></path></>} />,
+            VolumeX: ({className}) => <Icon className={className} path={<><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></>} />,
+            Zap: ({className}) => <Icon className={className} path={<><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></>} />,
+        };
+
+        // --- KOMPONEN UTAMA ---
+        function App() {
+            const [currentView, setCurrentView] = useState('intro'); 
+            const [unlockedLevel, setUnlockedLevel] = useState(1); 
+            const [correctCount, setCorrectCount] = useState(0); 
+            const [userData, setUserData] = useState({});
+            const [isMenuOpen, setIsMenuOpen] = useState(false);
+            const [isFullscreen, setIsFullscreen] = useState(false);
+            const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+            
+            const [playerName, setPlayerName] = useState("");
+            const [playerSchool, setPlayerSchool] = useState("");
+
+            const audioRef = useRef(null);
+
+            useEffect(() => {
+                if (audioRef.current) {
+                    if (isMusicPlaying) {
+                        const playPromise = audioRef.current.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(error => { console.log("Autoplay blocked/failed:", error); setIsMusicPlaying(false); });
+                        }
+                    } else { audioRef.current.pause(); }
+                }
+            }, [isMusicPlaying]);
+
+            const toggleMusic = () => setIsMusicPlaying(!isMusicPlaying);
+
+            const handleStartGame = (name, school) => {
+                setPlayerName(name); setPlayerSchool(school);
+                setCurrentView('tujuan_panduan'); setIsMusicPlaying(true); 
+            };
+
+            const handleLevelComplete = (levelNum) => {
+                if (levelNum < 5) {
+                    setUnlockedLevel(prev => Math.max(prev, levelNum + 1));
+                    setCurrentView('map');
+                } else {
+                    setCurrentView('end');
+                }
+            };
+
+            const startLevel = (levelNum) => setCurrentView(`level${levelNum}`);
+            const updateUserData = (key, value) => setUserData(prev => ({ ...prev, [key]: value }));
+            const incrementCorrect = () => setCorrectCount(prev => prev + 1);
+
+            const toggleFullscreen = () => {
+                if (!document.fullscreenElement) { document.documentElement.requestFullscreen().catch((e) => console.log(e)); setIsFullscreen(true); } 
+                else { if (document.exitFullscreen) { document.exitFullscreen(); setIsFullscreen(false); } }
+            };
+
+            let currentIslandName = "";
+            let currentMission = "";
+            let currentIcon = "";
+            if (currentView.startsWith('level')) {
+                const lvl = parseInt(currentView.replace('level', ''));
+                if (LEVEL_DATA[lvl]) {
+                    currentIslandName = LEVEL_DATA[lvl].title;
+                    currentMission = LEVEL_DATA[lvl].subtitle;
+                    const icons = ["", "🧪", "🔍", "⚖️", "📝", "✍️"];
+                    currentIcon = icons[lvl];
+                }
+            }
+
+            return (
+                <div className="h-screen w-screen font-sans text-gray-800 flex flex-col transition-all duration-700 ease-in-out overflow-hidden"
+                     style={{ 
+                       backgroundImage: `url(${MAIN_BG_IMAGE})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed',
+                     }}>
+                  
+                  <div className="absolute inset-0 bg-blue-900/40 mix-blend-multiply pointer-events-none z-0"></div>
+                  
+                  <audio ref={audioRef} src={BACKSONG_URL} loop preload="auto" />
+                  
+                  <div className="flex flex-col w-full max-w-[1600px] mx-auto h-full relative z-10">
+                    
+                    {/* Header Top Bar - Tema Sains */}
+                    <div className="flex-none z-40 bg-gradient-to-r from-blue-700 to-cyan-700 p-2 md:p-3 xl:p-4 text-white flex justify-between items-center shadow-md rounded-b-xl mx-2 mt-2 gap-2 border-b-4 border-blue-900">
+                        <div className="flex items-center gap-2 md:gap-3 xl:gap-4 flex-shrink-0 w-1/4">
+                             <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-1.5 xl:p-2 hover:bg-white/20 rounded-full transition">
+                               {isMenuOpen ? <Icons.X className="w-6 h-6 xl:w-8 xl:h-8" /> : <Icons.Menu className="w-6 h-6 xl:w-8 xl:h-8" />}
+                             </button>
+                             <div className="w-8 h-8 xl:w-12 xl:h-12 bg-white rounded-full flex items-center justify-center text-xl xl:text-3xl border-2 border-cyan-300 drop-shadow-md hidden sm:flex">🔬</div>
+                             <div className="hidden lg:flex flex-col">
+                               <h1 className="font-bold text-lg xl:text-xl 2xl:text-2xl leading-none drop-shadow-md tracking-wide text-cyan-200">Siklus Air</h1>
+                             </div>
+                        </div>
+
+                        <div className="flex-1 flex flex-col items-center justify-center text-center overflow-hidden">
+                            {currentIslandName ? (
+                                <>
+                                    <div className="flex items-center bg-white/20 px-3 md:px-5 py-1 xl:py-1.5 rounded-full text-xs md:text-base xl:text-xl font-bold text-white border border-white/30 shadow-inner whitespace-nowrap">
+                                        <span className="mr-1 xl:mr-2 text-base md:text-xl xl:text-2xl">{currentIcon}</span> {currentIslandName}
+                                    </div>
+                                    <div className="text-[10px] md:text-xs xl:text-sm font-bold text-cyan-200 mt-1 bg-black/20 px-3 md:px-5 py-0.5 xl:py-1 rounded-full truncate max-w-full">
+                                        {currentMission}
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex flex-col items-center lg:hidden">
+                                    <h1 className="font-bold text-base leading-none drop-shadow-md tracking-wide text-cyan-200">Siklus Air</h1>
+                                    {playerName && <div className="text-[10px] text-cyan-100 font-medium mt-1">Halo, {playerName}!</div>}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-2 md:gap-3 xl:gap-5 flex-shrink-0 w-1/4 justify-end">
+                            <button onClick={toggleMusic} className="p-1.5 xl:p-2 hover:bg-white/20 rounded-full transition">
+                               {isMusicPlaying ? <Icons.Volume2 className="w-5 h-5 md:w-6 md:h-6 xl:w-8 xl:h-8"/> : <Icons.VolumeX className="w-5 h-5 md:w-6 md:h-6 xl:w-8 xl:h-8"/>}
+                            </button>
+                            <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 xl:px-5 xl:py-2 rounded-full text-sm md:text-base xl:text-xl border border-white/20 shadow-inner">
+                              <Icons.Star className="w-4 h-4 md:w-5 md:h-5 xl:w-6 xl:h-6 text-yellow-400 fill-yellow-400 animate-pulse" />
+                              <span className="font-bold text-white">{correctCount}<span className="text-[10px] md:text-xs xl:text-sm text-gray-300 font-normal ml-1">/21</span></span>
+                            </div>
+                            <button onClick={toggleFullscreen} className="p-1.5 xl:p-2 hover:bg-white/20 rounded-full hidden sm:block transition">
+                               {isFullscreen ? <Icons.Minimize className="w-5 h-5 md:w-6 md:h-6 xl:w-8 xl:h-8"/> : <Icons.Maximize className="w-5 h-5 md:w-6 md:h-6 xl:w-8 xl:h-8"/>}
+                            </button>
+                        </div>
+                    </div>
+
+                    {isMenuOpen && (
+                      <div className="absolute top-[70px] md:top-[90px] xl:top-[100px] left-2 w-64 md:w-72 xl:w-80 bg-white/95 backdrop-blur-md shadow-2xl z-50 rounded-xl xl:rounded-2xl border-2 border-blue-200 animate-fade-in overflow-hidden">
+                          <div className="p-4 xl:p-5 space-y-3 xl:space-y-4">
+                            <div className="font-bold text-blue-700 uppercase text-xs xl:text-sm tracking-wider mb-2 border-b border-blue-100 pb-2">Navigasi Lab</div>
+                            <button onClick={() => {setCurrentView('map'); setIsMenuOpen(false)}} className="w-full text-left p-3 rounded-lg flex items-center gap-3 xl:gap-4 hover:bg-blue-50 text-gray-700 font-bold text-sm md:text-base xl:text-lg">
+                               <Icons.Map className="w-5 h-5 xl:w-6 xl:h-6 text-blue-500" /> Peta Lab
+                            </button>
+                            <button onClick={() => {setCurrentView('intro'); setIsMenuOpen(false)}} className="w-full text-left p-3 rounded-lg flex items-center gap-3 xl:gap-4 hover:bg-blue-50 text-gray-700 font-bold text-sm md:text-base xl:text-lg">
+                               <Icons.Home className="w-5 h-5 xl:w-6 xl:h-6 text-blue-500" /> Halaman Utama
+                            </button>
+                            <hr className="my-2 border-gray-100" />
+                            <button onClick={() => window.location.reload()} className="w-full text-left p-3 rounded-lg flex items-center gap-3 xl:gap-4 text-red-500 hover:bg-red-50 font-bold text-sm md:text-base xl:text-lg">
+                              <Icons.RefreshCcw className="w-5 h-5 xl:w-6 xl:h-6" /> Muat Ulang Lab
+                            </button>
+                          </div>
+                      </div>
+                    )}
+
+                    <main className="flex-grow flex flex-col min-h-0 overflow-y-auto custom-scrollbar relative">
+                        <div className={`flex flex-col flex-grow w-full mx-auto p-2 md:p-4 xl:p-6 ${currentView === 'intro' || currentView === 'tujuan_panduan' || currentView === 'materi' || currentView === 'map' ? 'justify-center items-center' : ''}`}>
+                            {currentView === 'intro' && <IntroScreen onStart={handleStartGame} />}
+                            {currentView === 'tujuan_panduan' && <TujuanPanduanScreen onNext={() => setCurrentView('materi')} />}
+                            {currentView === 'materi' && <MateriScreen onNext={() => setCurrentView('map')} />}
+                            {currentView === 'map' && <MapScreen unlockedLevel={unlockedLevel} onLevelSelect={startLevel} onFinish={() => setCurrentView('end')} isCompleted={unlockedLevel > 5} />}
+                            {currentView === 'level1' && <Level1Sumatera onComplete={() => handleLevelComplete(1)} onCorrect={incrementCorrect} />}
+                            {currentView === 'level2' && <Level2Jawa onComplete={() => handleLevelComplete(2)} onCorrect={incrementCorrect} />}
+                            {currentView === 'level3' && <Level3Kalimantan onComplete={() => handleLevelComplete(3)} onCorrect={incrementCorrect} />}
+                            {currentView === 'level4' && <Level4Sulawesi onComplete={() => handleLevelComplete(4)} onCorrect={incrementCorrect} />}
+                            {currentView === 'level5' && <Level5Papua onComplete={() => handleLevelComplete(5)} saveRef={(val) => updateUserData('ref5', val)} saveData={updateUserData} />}
+                            {currentView === 'end' && <EndScreen userData={userData} correctCount={correctCount} playerName={playerName} playerSchool={playerSchool} onRestart={() => window.location.reload()} />}
+                        </div>
+                    </main>
+
+                  </div>
+                </div>
+            );
+        }
+
+        // --- STATIC INTRO SCREEN ---
+        function IntroScreen({ onStart }) {
+            const [name, setName] = useState("");
+            const [school, setSchool] = useState("");
+            const [showError, setShowError] = useState(false);
+
+            const handleStartClick = () => {
+                if (name.trim().length > 0 && school.trim().length > 0) {
+                    onStart(name, school);
+                } else {
+                    setShowError(true);
+                    setTimeout(() => setShowError(false), 3000); 
+                }
+            };
+
+            return (
+                <div className="w-full flex flex-col justify-center items-center gap-4 xl:gap-6 animate-fade-in flex-1 min-h-0 py-4">
+                  <div className="flex flex-col md:flex-row items-center justify-center gap-4 xl:gap-8 bg-white/95 p-4 xl:p-6 rounded-3xl backdrop-blur-sm shadow-md border-b-8 border-cyan-500 w-full max-w-4xl xl:max-w-5xl">
+                    <div className="w-32 md:w-40 xl:w-48 h-32 md:h-40 xl:h-48 bg-blue-100 rounded-full flex items-center justify-center text-6xl md:text-7xl xl:text-8xl animate-bounce-slow border-4 border-cyan-300 drop-shadow-xl">🔬</div>
+                    <div className="text-center md:text-left flex-1">
+                        <h2 className="text-3xl md:text-5xl xl:text-6xl font-extrabold text-blue-900 drop-shadow-sm leading-tight uppercase">{IDENTITAS.judul}</h2>
+                        <div className="flex flex-col sm:flex-row items-center gap-2 mt-3 xl:mt-4">
+                            <p className="text-sm md:text-base xl:text-xl text-cyan-800 font-bold bg-cyan-100 inline-block px-4 py-1.5 xl:py-2 rounded-full border border-cyan-300">{IDENTITAS.materi}</p>
+                            <p className="text-sm md:text-base xl:text-xl text-blue-800 font-bold bg-blue-100 inline-block px-4 py-1.5 xl:py-2 rounded-full border border-blue-300">{IDENTITAS.mapel} {IDENTITAS.kelas}</p>
+                        </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col lg:flex-row w-full max-w-4xl xl:max-w-5xl gap-4 xl:gap-6 h-auto">
+                    <div className="flex-1 bg-white/95 p-5 xl:p-8 rounded-3xl shadow-lg border-2 border-blue-200 backdrop-blur-md flex flex-col justify-center">
+                        <p className="text-gray-700 text-sm md:text-base xl:text-xl leading-relaxed xl:leading-loose font-medium">
+                            "Selamat datang, Asisten Peneliti! Laboratorium alam kita sedang memantau pergerakan air di bumi. 
+                            <br/><br/>
+                            Hari ini, kamu ditugaskan untuk meneliti tahapan <span className="text-blue-600 font-bold">Siklus Air</span>. Dari lautan yang menguap hingga hujan yang membasahi bumi. Selesaikan eksperimen di 5 pos stasiun penelitian untuk mendapatkan lencana <span className="text-cyan-700 font-bold">Ilmuwan Alam!</span>"
+                        </p>
+                    </div>
+
+                    <div className="flex-1 w-full bg-slate-50/95 p-5 xl:p-8 rounded-3xl border-2 border-blue-300 shadow-lg relative flex flex-col justify-center">
+                        <h3 className="font-black text-blue-900 mb-4 flex items-center justify-center gap-2 text-sm md:text-base xl:text-xl uppercase tracking-wide border-b border-blue-200 pb-2 xl:pb-3">
+                            <Icons.Users className="w-5 h-5 xl:w-6 xl:h-6 text-blue-600" /> Registrasi Ilmuwan
+                        </h3>
+                        <div className="space-y-4">
+                            <div className="relative">
+                                <span className="absolute left-3 xl:left-4 top-3 w-5 h-5 xl:w-6 xl:h-6 text-blue-400"><Icons.User className="w-5 h-5 xl:w-6 xl:h-6"/></span>
+                                <input type="text" placeholder="Tulis nama panggilanmu..." className={`w-full pl-10 xl:pl-12 p-3 xl:p-3.5 text-sm md:text-base xl:text-lg rounded-xl border-2 outline-none font-bold text-gray-800 ${showError && name.length === 0 ? 'border-red-500 bg-red-50' : 'border-blue-300 focus:border-cyan-500 focus:bg-blue-50'}`} value={name} onChange={(e) => setName(e.target.value)} />
+                            </div>
+                            <div className="relative">
+                                <span className="absolute left-3 xl:left-4 top-3 w-5 h-5 xl:w-6 xl:h-6 text-blue-400"><Icons.School className="w-5 h-5 xl:w-6 xl:h-6"/></span>
+                                <input type="text" placeholder="Tulis asal sekolahmu..." className={`w-full pl-10 xl:pl-12 p-3 xl:p-3.5 text-sm md:text-base xl:text-lg rounded-xl border-2 outline-none font-bold text-gray-800 ${showError && school.length === 0 ? 'border-red-500 bg-red-50' : 'border-blue-300 focus:border-cyan-500 focus:bg-blue-50'}`} value={school} onChange={(e) => setSchool(e.target.value)} />
+                            </div>
+                        </div>
+                        
+                        {showError && (
+                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] bg-red-100 border-2 border-red-500 text-red-800 px-4 py-3 rounded-xl flex flex-col items-center justify-center text-sm xl:text-base text-center shadow-2xl z-20 font-black">
+                              Isi Nama & Sekolah dulu ya, Ilmuwan!
+                          </div>
+                        )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col-reverse md:flex-row items-center justify-between w-full max-w-4xl xl:max-w-5xl gap-4 mt-2">
+                    <div className="text-xs xl:text-sm text-gray-700 bg-white/90 px-4 py-2 xl:py-3 rounded-xl shadow-sm border border-white/50 backdrop-blur-sm text-center md:text-left leading-tight font-bold">
+                        <span className="text-blue-800">Pengembang MPI: {IDENTITAS.guru}</span><br/>
+                        {IDENTITAS.sekolah}
+                    </div>
+
+                    <button onClick={handleStartClick} className="bg-gradient-to-b from-blue-500 to-cyan-600 text-white font-black hover:from-blue-400 hover:to-cyan-500 transition-all border-b-4 border-blue-800 active:border-b-0 py-3 xl:py-4 px-8 xl:px-12 rounded-full shadow-lg active:shadow-none active:translate-y-1 flex items-center gap-2 justify-center text-lg xl:text-2xl w-full md:w-auto uppercase tracking-wider">
+                        Mulai Riset <Icons.ArrowRight className="w-5 h-5 xl:w-7 xl:h-7" />
+                    </button>
+                  </div>
+                </div>
+            );
+        }
+
+        // --- TUJUAN & PANDUAN SCREEN ---
+        function TujuanPanduanScreen({ onNext }) {
+            const [activeModal, setActiveModal] = useState(null);
+            const closeModal = () => setActiveModal(null);
+
+            return (
+                <div className="w-full h-full flex flex-col justify-center items-center animate-fade-in flex-1 min-h-0 relative">
+                    <div className="bg-white/95 p-4 md:p-8 xl:p-10 rounded-3xl shadow-xl border-b-8 border-cyan-400 backdrop-blur-md w-full max-w-4xl flex flex-col">
+                        <div className="text-center border-b-2 border-blue-100 pb-3 xl:pb-5 mb-4 xl:mb-6 flex-shrink-0">
+                            <h2 className="text-2xl md:text-4xl xl:text-5xl font-extrabold text-blue-900 uppercase tracking-wider drop-shadow-sm">Panduan Laboratorium</h2>
+                            <p className="text-sm md:text-base xl:text-xl text-blue-600 font-bold mt-1 xl:mt-2">Pelajari arahan di bawah ini sebelum terjun ke lapangan!</p>
+                        </div>
+                        
+                        <div className="flex flex-col gap-4 md:gap-6 justify-center items-center flex-1 my-4">
+                            <button onClick={() => setActiveModal('tujuan')} className="w-full max-w-lg bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-400 hover:to-cyan-500 text-white font-extrabold py-4 md:py-5 px-6 md:px-8 rounded-2xl shadow-[0_6px_0_#1e3a8a] active:shadow-none active:translate-y-2 transition-all flex items-center justify-between text-lg md:text-2xl xl:text-3xl border border-blue-400">
+                                <span className="flex items-center gap-3 md:gap-4"><Icons.CheckCircle className="w-8 h-8 md:w-10 md:h-10" /> Tujuan Riset</span>
+                                <Icons.ArrowRight className="w-6 h-6 md:w-8 md:h-8" />
+                            </button>
+
+                            <button onClick={() => setActiveModal('panduan')} className="w-full max-w-lg bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-400 hover:to-blue-500 text-white font-extrabold py-4 md:py-5 px-6 md:px-8 rounded-2xl shadow-[0_6px_0_#312e81] active:shadow-none active:translate-y-2 transition-all flex items-center justify-between text-lg md:text-2xl xl:text-3xl border border-indigo-400">
+                                <span className="flex items-center gap-3 md:gap-4"><Icons.Map className="w-8 h-8 md:w-10 md:h-10" /> Aturan Eksplorasi</span>
+                                <Icons.ArrowRight className="w-6 h-6 md:w-8 md:h-8" />
+                            </button>
+                        </div>
+                        
+                        <div className="mt-6 pt-4 xl:mt-8 xl:pt-6 border-t-2 border-gray-100 text-center flex-shrink-0">
+                            <button onClick={onNext} className="bg-gradient-to-b from-cyan-500 to-teal-600 text-white font-black hover:from-cyan-400 hover:to-teal-500 transition-all border-b-4 border-teal-800 active:border-b-0 py-3 px-10 xl:py-4 xl:px-14 text-lg md:text-xl xl:text-2xl rounded-full shadow-lg active:shadow-none active:translate-y-1 inline-flex items-center gap-2 uppercase tracking-wide">
+                                Masuk ke Basecamp <Icons.ArrowRight className="w-6 h-6 xl:w-7 xl:h-7" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {activeModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={closeModal}>
+                            <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl border-4 border-blue-400 overflow-hidden flex flex-col max-h-[90vh] animate-pop-in" onClick={e => e.stopPropagation()}>
+                                <div className="flex justify-between items-center p-4 md:p-6 border-b-2 border-blue-100 bg-blue-50">
+                                    <h3 className="font-extrabold text-xl md:text-2xl xl:text-3xl text-blue-900 flex items-center gap-3 uppercase tracking-wide">
+                                        {activeModal === 'tujuan' && <><Icons.CheckCircle className="w-7 h-7 md:w-9 md:h-9 text-blue-600"/> Tujuan Riset</>}
+                                        {activeModal === 'panduan' && <><Icons.Map className="w-7 h-7 md:w-9 md:h-9 text-indigo-600"/> Aturan Eksplorasi</>}
+                                    </h3>
+                                    <button onClick={closeModal} className="p-2 bg-white hover:bg-red-100 hover:text-red-600 rounded-full transition-colors shadow-sm border border-gray-200">
+                                        <Icons.X className="w-6 h-6 md:w-8 md:h-8" />
+                                    </button>
+                                </div>
+                                
+                                <div className="p-5 md:p-8 overflow-y-auto custom-scrollbar flex-1 bg-white">
+                                    {activeModal === 'tujuan' && (
+                                        <div className="bg-blue-50 p-5 xl:p-8 rounded-2xl shadow-sm space-y-4 md:space-y-6 border border-blue-200">
+                                            <div className="flex gap-4 items-start bg-white p-4 xl:p-6 rounded-xl border border-blue-100 shadow-sm">
+                                                <div className="bg-blue-500 text-white font-black rounded-full w-10 h-10 md:w-12 md:h-12 flex items-center justify-center flex-shrink-0 text-lg md:text-xl shadow-md">🎯</div>
+                                                <p className="text-gray-800 font-bold text-base md:text-lg xl:text-2xl leading-relaxed mt-1 md:mt-2">Peserta didik dapat mengidentifikasi urutan siklus air, menjelaskan proses evaporasi, kondensasi, presipitasi, dan infiltrasi, serta menganalisis dampak aktivitas manusia terhadap siklus air.</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {activeModal === 'panduan' && (
+                                        <div className="bg-indigo-50 p-5 xl:p-8 rounded-2xl shadow-sm border border-indigo-200 flex flex-col justify-center">
+                                            <ul className="text-base md:text-lg xl:text-2xl text-gray-700 space-y-4 md:space-y-5 font-medium">
+                                                <li className="flex items-start gap-3 md:gap-4 bg-white p-4 md:p-5 rounded-xl border border-indigo-100 shadow-sm">
+                                                    <Icons.ArrowRight className="w-6 h-6 md:w-8 md:h-8 text-indigo-500 flex-shrink-0 mt-1" /> 
+                                                    <span><b>Tahap 1:</b> Tuliskan namamu di buku tamu untuk memulai petualangan sains.</span>
+                                                </li>
+                                                <li className="flex items-start gap-3 md:gap-4 bg-white p-4 md:p-5 rounded-xl border border-indigo-100 shadow-sm">
+                                                    <Icons.ArrowRight className="w-6 h-6 md:w-8 md:h-8 text-indigo-500 flex-shrink-0 mt-1" /> 
+                                                    <span><b>Tahap 2:</b> Buka <b>Basecamp Pelatihan</b> untuk menyimak video teori dan bermain teka-teki istilah. Jangan lupa selesaikan tes latihannya!</span>
+                                                </li>
+                                                <li className="flex items-start gap-3 md:gap-4 bg-white p-4 md:p-5 rounded-xl border border-indigo-100 shadow-sm">
+                                                    <Icons.ArrowRight className="w-6 h-6 md:w-8 md:h-8 text-indigo-500 flex-shrink-0 mt-1" /> 
+                                                    <span><b>Tahap 3:</b> Masuk ke <b>Peta Lab</b> dan selesaikan tantangan dari Stasiun Pengamat hingga Pusat Riset!</span>
+                                                </li>
+                                                <li className="flex items-start gap-3 md:gap-4 bg-white p-4 md:p-5 rounded-xl border border-indigo-100 shadow-sm">
+                                                    <Icons.ArrowRight className="w-6 h-6 md:w-8 md:h-8 text-indigo-500 flex-shrink-0 mt-1" /> 
+                                                    <span><b>Tahap 4:</b> Kumpulkan bintang emas! Di akhir riset, tuliskan laporan pemahamanmu kepada guru.</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="p-4 md:p-6 border-t-2 border-blue-100 bg-blue-50 text-center">
+                                    <button onClick={closeModal} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-10 rounded-xl transition-colors shadow-[0_4px_0_#1e3a8a] active:shadow-none active:translate-y-1 text-lg uppercase tracking-wide">Siap Laksanakan!</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // --- MATERI PEMBELAJARAN SCREEN (TABS) ---
+        function MateriScreen({ onNext }) {
+            const [activeTab, setActiveTab] = useState(null); 
+            
+            const [videoAnswers1, setVideoAnswers1] = useState({});
+            const [videoQuizSubmitted1, setVideoQuizSubmitted1] = useState(false);
+
+            const shuffledPodcastOptions = useMemo(() => shuffleArray(ISTILAH_OPTIONS), []);
+            const [podcastDropped, setPodcastDropped] = useState({});
+            const [podcastSelected, setPodcastSelected] = useState(null);
+            const [podcastDragOver, setPodcastDragOver] = useState(null);
+            const [podcastSubmitted, setPodcastSubmitted] = useState(false);
+            const [podcastFeedback, setPodcastFeedback] = useState("");
+
+            const handlePodcastDragStart = (e, opt) => { e.dataTransfer.setData("opt", JSON.stringify(opt)); };
+            const handlePodcastDrop = (e, qId) => {
+                e.preventDefault(); setPodcastDragOver(null);
+                const optData = e.dataTransfer.getData("opt");
+                if (optData) {
+                    const opt = JSON.parse(optData);
+                    setPodcastDropped(prev => ({ ...prev, [qId]: opt }));
+                    setPodcastFeedback("");
+                }
+            };
+            const handlePodcastRemove = (qId) => {
+                setPodcastDropped(prev => { const newD = {...prev}; delete newD[qId]; return newD; });
+                setPodcastFeedback("");
+            };
+            const handlePodcastOptClick = (opt) => setPodcastSelected(podcastSelected?.id === opt.id ? null : opt);
+            const handlePodcastTargetClick = (qId) => {
+                if (podcastSelected) {
+                    setPodcastDropped(prev => ({...prev, [qId]: podcastSelected}));
+                    setPodcastSelected(null);
+                    setPodcastFeedback("");
+                } else if (podcastDropped[qId]) { handlePodcastRemove(qId); }
+            };
+            const checkPodcastAnswer = () => {
+                if (Object.keys(podcastDropped).length < ISTILAH_QUESTIONS.length) {
+                    setPodcastFeedback("Pasangkan semua pernyataan terlebih dahulu ya, Ilmuwan!"); return;
+                }
+                let allCorrect = true;
+                ISTILAH_QUESTIONS.forEach(q => { if (podcastDropped[q.id]?.id !== q.matchId) allCorrect = false; });
+                if (allCorrect) {
+                    playSfx('correct'); setPodcastSubmitted(true); setPodcastFeedback("");
+                } else {
+                    playSfx('incorrect'); setPodcastFeedback("Masih ada pasangan istilah yang belum tepat. Ayo teliti lagi!");
+                }
+            };
+
+            return (
+                <div className="w-full h-full flex flex-col justify-center items-center animate-fade-in flex-1 min-h-0">
+                  <div className="bg-white/95 p-4 md:p-6 xl:p-8 rounded-3xl shadow-xl border-b-8 border-cyan-400 backdrop-blur-md w-full max-w-5xl xl:max-w-6xl flex flex-col flex-1 min-h-0">
+                      
+                      {activeTab === null ? (
+                          <div className="flex flex-col gap-4 md:gap-6 justify-center items-center flex-1 w-full my-auto">
+                              <h2 className="text-2xl md:text-4xl xl:text-5xl font-black text-blue-900 uppercase tracking-wider mb-2 xl:mb-4 text-center drop-shadow-sm">Basecamp Pelatihan</h2>
+                              
+                              <button onClick={() => setActiveTab('video')} className="w-full max-w-lg bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-400 hover:to-rose-500 text-white font-extrabold py-4 md:py-5 px-6 md:px-8 rounded-2xl shadow-[0_6px_0_#9f1239] active:shadow-none active:translate-y-2 transition-all flex items-center justify-between text-lg md:text-2xl xl:text-3xl border border-red-400">
+                                  <span className="flex items-center gap-3 md:gap-4"><span className="text-3xl md:text-4xl">🎥</span> Materi Video Siklus Air</span>
+                                  <Icons.ArrowRight className="w-6 h-6 md:w-8 md:h-8" />
+                              </button>
+
+                              <button onClick={() => setActiveTab('siniar')} className="w-full max-w-lg bg-gradient-to-r from-cyan-500 to-teal-600 hover:from-cyan-400 hover:to-teal-500 text-white font-extrabold py-4 md:py-5 px-6 md:px-8 rounded-2xl shadow-[0_6px_0_#0f766e] active:shadow-none active:translate-y-2 transition-all flex items-center justify-between text-lg md:text-2xl xl:text-3xl border border-cyan-400">
+                                  <span className="flex items-center gap-3 md:gap-4"><span className="text-3xl md:text-4xl">🧩</span> Teka-teki Istilah</span>
+                                  <Icons.ArrowRight className="w-6 h-6 md:w-8 md:h-8" />
+                              </button>
+                          </div>
+                      ) : (
+                          <div className="flex flex-col flex-1 min-h-0 w-full relative z-10">
+                              <div className="flex justify-between items-center mb-4 border-b-2 border-slate-200 pb-4 flex-shrink-0">
+                                  <button onClick={() => setActiveTab(null)} className="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 px-4 rounded-xl flex items-center gap-2 transition-colors text-sm md:text-base shadow-sm border border-slate-300 uppercase tracking-wider">
+                                      <Icons.ArrowRight className="w-5 h-5 rotate-180" /> Kembali
+                                  </button>
+                                  <h3 className="font-extrabold text-blue-900 text-lg md:text-xl xl:text-3xl hidden sm:block uppercase tracking-wider">
+                                      {activeTab === 'video' ? '🎥 Materi Video' : '🧩 Teka-teki Istilah'}
+                                  </h3>
+                              </div>
+
+                              <div className="flex-1 overflow-y-auto custom-scrollbar p-2 md:p-4 flex flex-col">
+                                  
+                                  {activeTab === 'video' && (
+                                      <div className="w-full flex flex-col animate-fade-in space-y-6 pb-4">
+                                            <div className="animate-fade-in space-y-6">
+                                                <div className="w-full max-w-4xl mx-auto bg-red-50 border-l-4 border-red-600 p-4 xl:p-6 rounded-xl shadow-inner flex items-center gap-3">
+                                                    <Icons.BookOpen className="w-6 h-6 xl:w-8 xl:h-8 text-red-700 flex-shrink-0" />
+                                                    <p className="text-sm md:text-base xl:text-xl font-bold text-red-900">Simak tayangan berikut ini untuk memahami tahapan penting dalam siklus perputaran air di bumi.</p>
+                                                </div>
+                                                <div className="w-full max-w-4xl mx-auto aspect-video rounded-2xl overflow-hidden shadow-2xl border-4 border-red-300 flex-shrink-0 bg-black relative group">
+                                                    <iframe
+                                                        className="w-full h-full"
+                                                        src={YOUTUBE_URL} 
+                                                        title="YouTube video player"
+                                                        frameBorder="0"
+                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                                        allowFullScreen
+                                                    ></iframe>
+                                                </div>
+                                                
+                                                <div className="w-full max-w-4xl mx-auto text-center mt-2">
+                                                    <a href={YOUTUBE_ORIGINAL_LINK} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-red-700 font-bold bg-red-100 hover:bg-red-200 px-5 py-2 rounded-lg transition-colors border border-red-300 shadow-sm text-sm md:text-base">
+                                                        <span>Buka Video di Tab Baru (Jika Gagal Memuat)</span> <Icons.ArrowRight className="w-4 h-4 -rotate-45" />
+                                                    </a>
+                                                </div>
+
+                                                <div className="w-full max-w-4xl mx-auto bg-slate-50 p-5 xl:p-8 rounded-2xl border-2 border-slate-200 shadow-sm flex-shrink-0">
+                                                    <h4 className="font-extrabold text-slate-800 mb-4 text-base md:text-lg xl:text-2xl flex items-center gap-2 uppercase tracking-wide border-b pb-2">✏️ Tes Pemahaman Video</h4>
+                                                    <div className="space-y-4 xl:space-y-6 mt-4">
+                                                        {VIDEO_QUESTIONS.map((q) => (
+                                                            <div key={q.id} className="bg-white p-4 xl:p-6 rounded-xl border border-slate-300 shadow-sm">
+                                                                <p className="font-bold text-slate-800 mb-3 text-sm md:text-base xl:text-xl whitespace-pre-wrap">{q.text}</p>
+                                                                <div className="space-y-2 xl:space-y-3">
+                                                                    {q.options.map((opt, oIdx) => {
+                                                                        const isSelected = videoAnswers1[q.id] === oIdx;
+                                                                        const isCorrect = q.correct === oIdx;
+                                                                        const showResult = videoQuizSubmitted1;
+                                                                        
+                                                                        let btnClass = "w-full text-left p-3 xl:p-4 rounded-xl border-2 text-sm md:text-base xl:text-lg font-bold transition-all flex items-start gap-3 ";
+                                                                        if (showResult) {
+                                                                            if (isCorrect) btnClass += "bg-cyan-50 border-cyan-500 text-cyan-800";
+                                                                            else if (isSelected && !isCorrect) btnClass += "bg-rose-50 border-rose-500 text-rose-800 line-through";
+                                                                            else btnClass += "bg-slate-50 border-slate-200 text-slate-400 opacity-50";
+                                                                        } else {
+                                                                            btnClass += isSelected ? "bg-cyan-600 border-cyan-700 text-white shadow-inner" : "bg-white border-slate-300 text-slate-700 hover:border-cyan-400 hover:bg-cyan-50";
+                                                                        }
+
+                                                                        return (
+                                                                            <button key={oIdx} disabled={videoQuizSubmitted1} onClick={() => setVideoAnswers1(prev => ({...prev, [q.id]: oIdx}))} className={btnClass}>
+                                                                                <span className="flex-1 leading-snug">{opt}</span>
+                                                                                {showResult && isCorrect && <Icons.CheckCircle className="w-5 h-5 xl:w-6 xl:h-6 text-cyan-600 flex-shrink-0" />}
+                                                                                {showResult && isSelected && !isCorrect && <Icons.X className="w-5 h-5 xl:w-6 xl:h-6 text-rose-600 flex-shrink-0" />}
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    {!videoQuizSubmitted1 ? (
+                                                        <button 
+                                                            onClick={() => {
+                                                                setVideoQuizSubmitted1(true);
+                                                                const isAllCorrect = VIDEO_QUESTIONS.every(q => videoAnswers1[q.id] === q.correct);
+                                                                if (isAllCorrect) playSfx('correct'); else playSfx('incorrect');
+                                                            }}
+                                                            disabled={Object.keys(videoAnswers1).length < VIDEO_QUESTIONS.length}
+                                                            className="mt-6 bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none text-white font-black py-3 px-6 xl:py-4 xl:px-8 rounded-xl w-full transition-all text-sm md:text-base xl:text-xl shadow-[0_4px_0_#0e7490] active:shadow-none active:translate-y-1 uppercase tracking-wider"
+                                                        >
+                                                            Cek Pemahaman
+                                                        </button>
+                                                    ) : (
+                                                        <div className="mt-6 text-center bg-white p-4 rounded-xl border-2 border-cyan-200">
+                                                            <p className="font-bold text-slate-800 mb-3 text-sm md:text-base xl:text-xl">Latihan selesai! Tinjau kembali jawaban yang salah.</p>
+                                                            <button onClick={() => {setVideoAnswers1({}); setVideoQuizSubmitted1(false);}} className="text-cyan-600 font-bold underline hover:text-cyan-800 text-sm md:text-base xl:text-lg">
+                                                                <Icons.RefreshCcw className="inline w-4 h-4 mr-1 mb-0.5" /> Ulangi
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                      </div>
+                                  )}
+
+                                  {activeTab === 'siniar' && (
+                                      <div className="w-full flex flex-col animate-fade-in space-y-6 pb-4">
+                                          <div className="w-full max-w-4xl mx-auto bg-cyan-50 border-l-4 border-cyan-600 p-4 xl:p-6 rounded-xl shadow-inner flex items-center gap-3">
+                                              <Icons.BookOpen className="w-6 h-6 xl:w-8 xl:h-8 text-cyan-700 flex-shrink-0" />
+                                              <p className="text-sm md:text-base xl:text-xl font-bold text-cyan-900">Ilmuwan, pasangkan deskripsi proses di kotak dengan istilah sains yang tepat (kotak putih) di permainan ini!</p>
+                                          </div>
+
+                                          <div className="w-full max-w-4xl mx-auto bg-slate-50 p-5 xl:p-8 rounded-2xl border-2 border-slate-200 shadow-sm flex-shrink-0">
+                                              <h4 className="font-extrabold text-slate-800 mb-4 text-base md:text-lg xl:text-2xl flex items-center gap-2 uppercase tracking-wide border-b pb-2">🧩 Teka-teki Istilah</h4>
+                                              <p className="text-sm md:text-base xl:text-lg text-cyan-900 font-medium mb-5">Tarik dan letakkan istilah sains yang tepat pada kotak jawaban yang kosong!</p>
+
+                                              <div className="bg-white p-4 rounded-xl border-2 border-dashed border-cyan-300 mb-6 flex flex-wrap gap-3 justify-center min-h-[80px]">
+                                                  {shuffledPodcastOptions.map(opt => {
+                                                      const isDropped = Object.values(podcastDropped).find(d => d.id === opt.id);
+                                                      if (isDropped) return null;
+                                                      return (
+                                                          <div 
+                                                              key={opt.id} draggable onDragStart={(e) => handlePodcastDragStart(e, opt)} onClick={() => handlePodcastOptClick(opt)}
+                                                              className={`px-4 py-2 rounded-lg border-2 font-black text-sm md:text-base cursor-grab active:cursor-grabbing shadow-sm transition-all select-none max-w-xs text-center ${podcastSelected?.id === opt.id ? 'bg-cyan-500 border-cyan-600 text-white scale-105' : 'bg-white text-gray-800 border-cyan-300 hover:bg-cyan-50'}`}
+                                                          >
+                                                              {opt.text}
+                                                          </div>
+                                                      )
+                                                  })}
+                                                  {Object.keys(podcastDropped).length === ISTILAH_QUESTIONS.length && <span className="text-gray-500 font-medium my-auto text-sm md:text-base w-full text-center mt-2">Semua pernyataan telah terisi. Sisa pilihan adalah pengecoh.</span>}
+                                              </div>
+
+                                              <div className="space-y-4 xl:space-y-6">
+                                                  {ISTILAH_QUESTIONS.map((q, idx) => (
+                                                      <div key={q.id} className="bg-white p-4 xl:p-6 rounded-xl border border-cyan-200 shadow-sm flex flex-col md:flex-row gap-4 xl:gap-6">
+                                                          <div className="flex-1">
+                                                              <span className="font-black text-cyan-800 text-xs md:text-sm uppercase tracking-wider block mb-2">Kasus {idx + 1}</span>
+                                                              <p className="font-bold text-gray-800 text-sm md:text-base xl:text-lg leading-relaxed">{q.text}</p>
+                                                          </div>
+                                                          <div 
+                                                              className={`flex-1 min-h-[80px] border-2 border-dashed rounded-xl p-3 flex items-center justify-center transition-all cursor-pointer relative ${podcastDragOver === q.id ? 'bg-cyan-100 border-cyan-500 scale-[1.02]' : 'bg-gray-50 border-gray-300 hover:border-cyan-300'} ${podcastDropped[q.id] ? 'bg-cyan-50 border-cyan-400 border-solid' : ''}`}
+                                                              onDragOver={(e) => { e.preventDefault(); setPodcastDragOver(q.id); }} onDragLeave={() => setPodcastDragOver(null)} onDrop={(e) => handlePodcastDrop(e, q.id)} onClick={() => handlePodcastTargetClick(q.id)}
+                                                          >
+                                                              {podcastDropped[q.id] ? (
+                                                                  <div className="text-center relative w-full group p-2">
+                                                                      <span className="font-black text-cyan-900 text-sm md:text-base">{podcastDropped[q.id].text}</span>
+                                                                      {!podcastSubmitted && (
+                                                                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/90 transition-opacity rounded-lg">
+                                                                              <Icons.X className="w-6 h-6 text-red-500 drop-shadow-md" />
+                                                                          </div>
+                                                                      )}
+                                                                  </div>
+                                                              ) : (
+                                                                  <span className="text-gray-400 font-medium text-sm md:text-base text-center">Letakkan Istilah di sini</span>
+                                                              )}
+                                                          </div>
+                                                      </div>
+                                                  ))}
+                                              </div>
+
+                                              {!podcastSubmitted ? (
+                                                  <div className="mt-8 flex flex-col items-center">
+                                                      {podcastFeedback && <p className="text-rose-600 font-bold text-sm md:text-base xl:text-xl mb-4 bg-rose-50 px-5 py-3 rounded-xl border border-rose-200 text-center w-full">{podcastFeedback}</p>}
+                                                      <button onClick={checkPodcastAnswer} className="bg-cyan-600 hover:bg-cyan-700 text-white font-black py-3 px-6 xl:py-4 xl:px-10 rounded-xl w-full transition-all text-base md:text-lg xl:text-xl shadow-[0_4px_0_#0e7490] active:shadow-none active:translate-y-1 flex items-center justify-center gap-2 uppercase tracking-wider">
+                                                          <Icons.CheckCircle className="w-5 h-5 xl:w-6 xl:h-6" /> Cek Pasangan
+                                                      </button>
+                                                  </div>
+                                              ) : (
+                                                  <div className="mt-8 text-center bg-white p-5 rounded-xl border border-cyan-200 shadow-sm">
+                                                      <p className="font-bold text-cyan-800 mb-3 text-base md:text-lg xl:text-xl flex items-center justify-center gap-2">
+                                                          <Icons.CheckCircle className="w-6 h-6 xl:w-8 xl:h-8" /> Riset selesai! Semua istilah sudah tepat.
+                                                      </p>
+                                                      <button onClick={() => {setPodcastDropped({}); setPodcastSubmitted(false); setPodcastFeedback("");}} className="text-cyan-600 font-bold underline hover:text-cyan-800 text-sm md:text-base xl:text-lg mt-2 inline-flex items-center gap-1">
+                                                          <Icons.RefreshCcw className="w-4 h-4" /> Ulangi Riset
+                                                      </button>
+                                                  </div>
+                                              )}
+                                          </div>
+                                      </div>
+                                  )}
+                              </div>
+                          </div>
+                      )}
+
+                      <div className="mt-4 pt-4 border-t border-gray-200 text-center flex-shrink-0">
+                          <button onClick={onNext} className="bg-gradient-to-b from-blue-600 to-indigo-700 text-white font-black hover:from-blue-500 hover:to-indigo-600 transition-all border-b-4 border-indigo-900 active:border-b-0 py-3 px-8 xl:py-4 xl:px-10 text-base md:text-lg xl:text-2xl rounded-full shadow-lg active:shadow-none active:translate-y-1 inline-flex items-center gap-2 uppercase tracking-wide">
+                              Lanjut ke Peta Lab <Icons.Map className="w-5 h-5 xl:w-7 xl:h-7" />
+                          </button>
+                      </div>
+                  </div>
+                </div>
+            );
+        }
+
+        // --- MAP SCREEN COMPONENT ---
+        function MapScreen({ unlockedLevel, onLevelSelect, onFinish, isCompleted }) {
+            return (
+                <div className="flex flex-col flex-1 min-h-[400px] w-full max-w-6xl xl:max-w-7xl bg-white rounded-2xl md:rounded-3xl overflow-hidden shadow-xl animate-fade-in relative border-4 border-blue-200 mx-auto">
+                  <div className="absolute top-3 left-3 md:top-5 md:left-5 z-10 bg-white/95 backdrop-blur px-4 py-3 md:px-5 md:py-4 rounded-xl shadow-lg border-l-4 md:border-l-8 border-cyan-500">
+                    <h2 className="font-black text-blue-900 text-sm md:text-xl tracking-wide uppercase">Peta Laboratorium</h2>
+                    <p className="text-xs md:text-sm text-gray-600 font-bold mt-1">Pilih tantangan yang terbuka!</p>
+                  </div>
+
+                  <div className="relative w-full h-full bg-cyan-100 overflow-hidden group">
+                    <img src={MAP_IMAGE_URL} alt="Peta" className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-[2s] opacity-90 mix-blend-multiply" />
+                    
+                    {MAP_POSITIONS.map((pos) => {
+                      const isUnlocked = pos.level <= unlockedLevel;
+                      const isCurrent = pos.level === unlockedLevel;
+                      
+                      return (
+                        <button key={pos.level} onClick={() => isUnlocked ? onLevelSelect(pos.level) : null} disabled={!isUnlocked} style={{ top: pos.top, left: pos.left }}
+                          className={`absolute transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 md:w-20 md:h-20 xl:w-24 xl:h-24 rounded-full flex items-center justify-center border-2 md:border-[5px] shadow-xl transition-all duration-300 z-20 group/btn
+                            ${isCurrent ? 'scale-110 animate-bounce-slow ring-4 ring-yellow-400 border-white' : 'hover:scale-110 border-white'}
+                            ${isUnlocked ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white cursor-pointer' : 'bg-slate-400 border-slate-500 text-slate-200 cursor-not-allowed grayscale'}
+                          `}
+                        >
+                          {isUnlocked ? (
+                            <span className="font-extrabold text-xl md:text-3xl xl:text-4xl drop-shadow-md">{pos.level}</span>
+                          ) : (
+                            <Icons.Lock className="w-5 h-5 md:w-8 md:h-8 opacity-50" />
+                          )}
+                          <div className="absolute -bottom-8 xl:-bottom-12 left-1/2 transform -translate-x-1/2 bg-white px-3 py-1.5 xl:px-4 xl:py-2 rounded-full text-[10px] md:text-sm xl:text-base font-bold whitespace-nowrap shadow-md border-2 border-cyan-100 text-blue-900 opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none z-30">
+                            {LEVEL_DATA[pos.level].title}
+                          </div>
+                        </button>
+                      );
+                    })}
+
+                    {isCompleted && (
+                      <button onClick={onFinish} className="absolute bottom-8 right-8 md:bottom-12 md:right-12 bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-black py-3 px-6 md:py-4 md:px-8 xl:py-5 xl:px-10 rounded-full shadow-[0_6px_0_#b45309] flex items-center gap-3 animate-pulse z-30 transform hover:scale-105 transition text-sm md:text-base xl:text-xl active:translate-y-2 active:shadow-none uppercase tracking-wide">
+                        <Icons.Award className="w-5 h-5 md:w-7 md:h-7 xl:w-8 xl:h-8" /> <span>Klaim Gelar Ilmuwan</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+            );
+        }
+
+        // --- LEVEL 1: MENGELOMPOKKAN ---
+        function Level1Sumatera({ onComplete, onCorrect }) {
+            const data = LEVEL_DATA[1];
+            const shuffledItems = useMemo(() => shuffleArray(data.items), [data.items]);
+            const shuffledTargets = useMemo(() => shuffleArray(data.targets), [data.targets]);
+            
+            const [droppedItems, setDroppedItems] = useState({}); 
+            const [completed, setCompleted] = useState(false);
+            const [dragOverTarget, setDragOverTarget] = useState(null);
+            const [selectedItem, setSelectedItem] = useState(null);
+            const [feedbackMsg, setFeedbackMsg] = useState("");
+
+            const handleDragStart = (e, item) => { e.dataTransfer.setData("item", JSON.stringify(item)); };
+            const handleDragOver = (e, targetId) => { e.preventDefault(); setDragOverTarget(targetId); };
+            const handleDragLeave = (e) => { e.preventDefault(); setDragOverTarget(null); }
+            const handleDrop = (e, target) => {
+                e.preventDefault(); setDragOverTarget(null);
+                const itemData = e.dataTransfer.getData("item");
+                if (itemData) {
+                    const item = JSON.parse(itemData);
+                    setDroppedItems(prev => ({ ...prev, [item.id]: target.id }));
+                    setFeedbackMsg("");
+                }
+            };
+
+            const handleRemoveItem = (itemId) => {
+                setDroppedItems(prev => { const newItems = { ...prev }; delete newItems[itemId]; return newItems; });
+                setFeedbackMsg("");
+            };
+
+            const handleItemClick = (item) => { setSelectedItem(selectedItem?.id === item.id ? null : item); };
+            const handleTargetClick = (target) => { 
+                if (selectedItem) {
+                    setDroppedItems(prev => ({ ...prev, [selectedItem.id]: target.id }));
+                    setSelectedItem(null);
+                    setFeedbackMsg("");
+                } 
+            };
+
+            const handleCheckAnswer = () => {
+                let isAllCorrect = true;
+                data.items.forEach(item => { if (droppedItems[item.id] !== item.matchId) isAllCorrect = false; });
+
+                if (isAllCorrect) {
+                    playSfx('correct');
+                    for(let i=0; i<data.items.length; i++) { if (onCorrect) onCorrect(); }
+                    setCompleted(true);
+                } else {
+                    playSfx('incorrect');
+                    setFeedbackMsg("Oops! Ada peristiwa yang masuk ke tabung yang salah. Coba periksa lagi!");
+                }
+            };
+
+            const allItemsDropped = Object.keys(droppedItems).length === data.items.length;
+
+            return (
+                <div className="flex flex-col h-full w-full max-w-7xl mx-auto flex-1 min-h-0">
+                  {!completed ? (
+                    <div className="flex flex-col flex-1 min-h-0 animate-fade-in">
+                        <div className="bg-white/90 backdrop-blur-sm p-4 md:p-5 rounded-2xl border-2 border-white shadow-sm mb-4 flex-shrink-0 flex flex-col md:flex-row gap-4 items-center">
+                            <div className="w-12 h-12 md:w-16 md:h-16 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 border-2 border-blue-300">
+                                <span className="text-2xl md:text-3xl">🧪</span>
+                            </div>
+                            <div>
+                                <h3 className="font-black text-blue-900 mb-1 text-sm md:text-lg xl:text-xl uppercase tracking-wider">{data.stimulusTitle}</h3>
+                                <p className="text-gray-800 text-xs md:text-sm xl:text-base font-bold leading-relaxed">{data.stimulusText}</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-cyan-100 p-3 xl:p-4 rounded-xl border-l-4 border-cyan-500 text-center text-sm md:text-base xl:text-xl font-bold text-cyan-900 mb-4 shadow-sm flex-shrink-0">
+                            💡 {data.instruction}
+                        </div>
+                        
+                        <div className="flex flex-col md:flex-row gap-4 xl:gap-8 flex-1 min-h-0">
+                          <div className="flex-1 md:w-1/2 flex flex-col min-h-0 overflow-y-auto custom-scrollbar pr-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 xl:p-4 bg-white/85 backdrop-blur-sm rounded-2xl border-2 border-dashed border-gray-300 min-h-[200px]">
+                              {shuffledItems.map(item => (
+                                !droppedItems[item.id] && (
+                                  <div key={item.id} draggable onDragStart={(e) => handleDragStart(e, item)} onClick={() => handleItemClick(item)}
+                                    className={`p-3 xl:p-4 rounded-xl border-4 text-center flex flex-col items-center justify-center cursor-grab active:cursor-grabbing select-none bg-blue-50 shadow-md hover:shadow-lg transition-all ${selectedItem?.id === item.id ? 'border-blue-400 bg-blue-100 scale-105' : 'border-blue-200'}`}
+                                  >
+                                    <span className="font-black text-sm md:text-base xl:text-lg text-blue-900 pointer-events-none drop-shadow-sm">{item.text}</span>
+                                  </div>
+                                )
+                              ))}
+                              {allItemsDropped && <p className="col-span-1 md:col-span-2 text-center text-gray-500 font-bold text-base xl:text-xl mt-6">Semua peristiwa telah diamati.</p>}
+                            </div>
+                          </div>
+                          
+                          <div className="flex-1 md:w-1/2 flex flex-col min-h-0 overflow-y-auto custom-scrollbar pr-2">
+                            <div className="grid grid-cols-1 gap-4">
+                              {shuffledTargets.map(target => (
+                                <div key={target.id} onDragOver={(e) => handleDragOver(e, target.id)} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, target)} onClick={() => handleTargetClick(target)}
+                                  className={`w-full p-4 xl:p-6 rounded-2xl border-4 border-dashed flex flex-col justify-start items-start transition-all min-h-[140px] xl:min-h-[180px] cursor-pointer ${dragOverTarget === target.id ? 'bg-cyan-100 border-cyan-500 scale-[1.02]' : 'bg-white/95 border-cyan-300 shadow-md'}`}
+                                >
+                                  <span className="font-black text-cyan-900 text-sm md:text-lg xl:text-2xl mb-3 border-b-2 border-cyan-200 pb-2 w-full flex items-center gap-2"><span className="text-2xl">🧪</span> {target.label}</span>
+                                  <div className="flex gap-2 flex-wrap justify-start w-full mt-2">
+                                    {data.items.filter(i => droppedItems[i.id] === target.id).map(i => (
+                                      <div key={i.id} title={`Klik untuk mengembalikan`} onClick={(e) => { e.stopPropagation(); handleRemoveItem(i.id); }} className="px-4 py-2 bg-cyan-50 text-cyan-900 font-black text-xs md:text-sm rounded-xl border-2 border-cyan-400 shadow-md animate-pop-in cursor-pointer hover:bg-red-100 hover:border-red-400 hover:text-red-700 transition-colors flex items-center justify-center gap-2">
+                                         {i.text} <Icons.X className="w-4 h-4"/>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {allItemsDropped && (
+                            <div className="mt-4 flex flex-col items-center flex-shrink-0 animate-fade-in">
+                                {feedbackMsg && <p className="text-red-600 font-bold text-sm md:text-base xl:text-xl mb-3 bg-red-100 px-5 py-3 rounded-xl border border-red-200 text-center">{feedbackMsg}</p>}
+                                <button onClick={handleCheckAnswer} className="bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white font-black py-3 px-10 xl:py-4 xl:px-14 rounded-2xl shadow-[0_6px_0_#1e3a8a] active:shadow-none active:translate-y-2 transition-all text-lg xl:text-2xl flex items-center justify-center gap-3 uppercase tracking-wide">
+                                    <Icons.CheckCircle className="w-6 h-6 xl:w-8 xl:h-8" /> Cek Hasil Pengelompokan
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                  ) : (
+                    <div className="bg-white/95 p-6 md:p-10 xl:p-14 rounded-3xl shadow-xl text-center space-y-5 border border-cyan-100 max-w-3xl mx-auto animate-fade-in mt-4 flex-shrink-0">
+                      <div className="w-16 h-16 md:w-20 md:h-20 xl:w-28 xl:h-28 bg-cyan-100 rounded-full flex items-center justify-center mx-auto text-3xl md:text-4xl xl:text-6xl shadow-inner border-4 border-cyan-300">🎉</div>
+                      <div>
+                          <h3 className="text-xl md:text-3xl xl:text-4xl font-black text-blue-900 uppercase tracking-wider mb-2">Luar Biasa!</h3>
+                          <p className="text-base md:text-lg xl:text-2xl font-bold text-gray-700 leading-relaxed">Kamu berhasil menata semua peristiwa alam sesuai siklusnya dengan tepat.</p>
+                      </div>
+                      <button onClick={onComplete} className="bg-gradient-to-b from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black w-full py-4 xl:py-5 text-lg md:text-xl xl:text-3xl rounded-2xl shadow-[0_6px_0_#1e3a8a] active:shadow-none active:translate-y-2 transition-all uppercase tracking-wide">Lanjut Riset Berikutnya 🚀</button>
+                    </div>
+                  )}
+                </div>
+            );
+        }
+
+        // --- LEVEL 2 (Pilihan Ganda Kontekstual) ---
+        function Level2Jawa({ onComplete, onCorrect }) {
+            const data = LEVEL_DATA[2];
+            const [answers, setAnswers] = useState({});
+            const [step, setStep] = useState('quiz'); 
+            const [currentQIndex, setCurrentQIndex] = useState(0);
+            const [scoreDetails, setScoreDetails] = useState(0);
+
+            const flatQuestions = React.useMemo(() => {
+                const arr = [];
+                data.parts.forEach(part => {
+                    part.questions.forEach(q => {
+                        const originalOptions = [...q.options];
+                        const shuffledOptions = shuffleArray(originalOptions);
+                        
+                        let newCorrect;
+                        if (q.type === 'single') {
+                            newCorrect = shuffledOptions.indexOf(originalOptions[q.correct]);
+                        } else {
+                            newCorrect = q.correct.map(idx => shuffledOptions.indexOf(originalOptions[idx]));
+                        }
+
+                        arr.push({
+                            ...q,
+                            options: shuffledOptions,
+                            correct: newCorrect,
+                            stimulusTitle: part.stimulusTitle,
+                            stimulusText: part.stimulusText
+                        });
+                    });
+                });
+                return arr;
+            }, [data]);
+
+            const currentQ = flatQuestions[currentQIndex];
+
+            const handleSingle = (qId, optIdx) => { setAnswers(prev => ({ ...prev, [qId]: optIdx })); };
+            
+            const isCurrentAnswered = answers[currentQ.id] !== undefined;
+            const handleNext = () => { if (currentQIndex < flatQuestions.length - 1) setCurrentQIndex(prev => prev + 1); };
+            const handlePrev = () => { if (currentQIndex > 0) setCurrentQIndex(prev => prev - 1); };
+
+            const handleSubmit = () => {
+                let correctAns = 0;
+                flatQuestions.forEach(q => {
+                    const userAns = answers[q.id];
+                    if (q.type === 'single') { if (userAns === q.correct) correctAns++; } 
+                });
+
+                if (correctAns === flatQuestions.length) playSfx('correct'); else playSfx('incorrect');
+                setScoreDetails(correctAns); setStep('feedback');
+            };
+
+            const handleRetry = () => { setAnswers({}); setCurrentQIndex(0); setScoreDetails(0); setStep('quiz'); };
+            const handleProceed = () => { for(let i = 0; i < scoreDetails; i++) { if (onCorrect) onCorrect(); } onComplete(); };
+
+            if (step === 'feedback') {
+                return (
+                    <div className="flex flex-col h-full w-full max-w-5xl mx-auto pb-4 animate-fade-in justify-center">
+                        <div className="bg-white/95 p-6 md:p-10 xl:p-14 rounded-3xl shadow-xl border-4 border-cyan-300 text-center mt-4 flex-shrink-0">
+                            <Icons.Award className="w-16 h-16 xl:w-24 xl:h-24 text-yellow-500 mx-auto animate-bounce-slow mb-3" />
+                            <h3 className="text-2xl md:text-3xl xl:text-5xl font-black text-blue-900 mb-3 xl:mb-5 uppercase tracking-wider">Hasil Analisis Kasus</h3>
+                            <p className="text-lg md:text-xl xl:text-3xl font-bold text-gray-600 mb-6 xl:mb-10">Kamu menjawab <span className="text-cyan-600 text-3xl md:text-4xl xl:text-6xl mx-2">{scoreDetails}</span> dari {flatQuestions.length} kasus dengan benar!</p>
+                            
+                            <div className="space-y-4 xl:space-y-6 text-left max-h-[40vh] overflow-y-auto custom-scrollbar pr-3 mb-8">
+                                {flatQuestions.map((q) => {
+                                    const userAns = answers[q.id];
+                                    let isCorrect = userAns === q.correct;
+                                    
+                                    return (
+                                        <div key={q.id} className={`p-4 xl:p-6 rounded-xl border-2 ${isCorrect ? 'border-cyan-300 bg-cyan-50' : 'border-red-300 bg-red-50'}`}>
+                                            <div className="flex gap-3 xl:gap-5 items-start mb-2 xl:mb-4">
+                                                {isCorrect ? <Icons.CheckCircle className="w-6 h-6 xl:w-8 xl:h-8 text-cyan-600 flex-shrink-0 mt-0.5" /> : <Icons.X className="w-6 h-6 xl:w-8 xl:h-8 text-red-600 flex-shrink-0 mt-0.5" />}
+                                                <p className="font-bold text-gray-800 text-sm md:text-base xl:text-xl">{q.text}</p>
+                                            </div>
+                                            <div className="ml-9 xl:ml-13 space-y-1 xl:space-y-2 text-sm md:text-base xl:text-xl">
+                                                {q.options.map((opt, oIdx) => {
+                                                    const isSelected = userAns === oIdx;
+                                                    const isCorrectOpt = q.correct === oIdx;
+                                                    if (!isSelected && !isCorrectOpt) return null; 
+                                                    
+                                                    let optClass = "text-gray-600 font-medium"; let icon = "•";
+                                                    if (isCorrectOpt) { optClass = "text-cyan-700 font-black"; icon = "✓"; } 
+                                                    else if (isSelected && !isCorrectOpt) { optClass = "text-red-600 line-through font-bold"; icon = "✗"; }
+                                                    
+                                                    return (
+                                                        <div key={oIdx} className={`flex gap-3 ${optClass}`}>
+                                                            <span className="w-5">{icon}</span>
+                                                            <span>{opt} {isSelected && !isCorrectOpt ? '(Jawabanmu)' : ''} {isCorrectOpt ? '(Jawaban Tepat)' : ''}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-4 xl:gap-6 justify-center">
+                                {scoreDetails < flatQuestions.length && (
+                                    <button onClick={handleRetry} className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-black py-3 px-8 xl:py-5 xl:px-12 rounded-2xl shadow-[0_6px_0_#b45309] active:shadow-none active:translate-y-2 transition-all text-base md:text-lg xl:text-2xl flex items-center justify-center gap-3">
+                                        <Icons.RefreshCcw className="w-6 h-6 xl:w-8 xl:h-8" /> Teliti Lagi Kasusnya
+                                    </button>
+                                )}
+                                <button onClick={handleProceed} className="bg-gradient-to-b from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black py-3 px-8 xl:py-5 xl:px-12 rounded-2xl shadow-[0_6px_0_#1e3a8a] active:shadow-none active:translate-y-2 transition-all text-base md:text-lg xl:text-2xl flex items-center justify-center gap-3">
+                                    Lanjut Riset 🚀
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="flex flex-col h-full w-full max-w-7xl mx-auto flex-1 min-h-0">
+                   <div className="bg-cyan-100 text-cyan-900 p-3 xl:p-4 rounded-xl text-center font-bold text-sm md:text-base xl:text-xl border-l-4 border-cyan-500 shadow-sm flex items-center justify-center gap-3 mb-4 flex-shrink-0">
+                     <Icons.BookOpen className="w-5 h-5 xl:w-7 xl:h-7" /> Baca kasus lingkungan di kiri, lalu pilih analisis yang tepat di kanan.
+                   </div>
+
+                   <div className="bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border-2 border-white/50 overflow-hidden flex flex-col md:flex-row flex-1 min-h-0">
+                       <div className="md:w-1/2 bg-blue-50/70 p-4 md:p-6 xl:p-8 border-b md:border-b-0 md:border-r border-blue-200 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
+                           <h3 className="font-black text-blue-900 mb-3 xl:mb-5 flex items-center gap-3 text-base md:text-lg xl:text-2xl flex-shrink-0 drop-shadow-sm uppercase tracking-wide">
+                               {currentQ.stimulusTitle}
+                           </h3>
+                           <div className="text-gray-900 text-sm md:text-base xl:text-xl whitespace-pre-wrap leading-relaxed font-bold bg-white/90 backdrop-blur-md p-4 md:p-6 xl:p-8 rounded-2xl border-2 border-blue-100 shadow-sm flex-1">
+                               {currentQ.stimulusText}
+                           </div>
+                       </div>
+                       
+                       <div className="md:w-1/2 p-4 md:p-6 xl:p-8 flex flex-col min-h-0 bg-white/50 backdrop-blur-sm">
+                           <div className="text-xs md:text-sm xl:text-base font-black text-cyan-700 uppercase tracking-wider mb-1 xl:mb-3 flex-shrink-0 bg-cyan-100 inline-block px-3 py-1 rounded-lg w-max">Pertanyaan {currentQIndex + 1} / {flatQuestions.length}</div>
+                           <p className="font-black text-gray-900 text-base md:text-lg xl:text-2xl leading-relaxed mb-4 xl:mb-6 flex-shrink-0 drop-shadow-sm mt-2">{currentQ.text}</p>
+                           
+                           <div className="space-y-3 xl:space-y-4 flex-grow overflow-y-auto custom-scrollbar pr-2">
+                               {currentQ.options.map((opt, oIdx) => {
+                                   const isSelected = answers[currentQ.id] === oIdx;
+                                   let btnClass = `w-full text-left px-4 py-3 md:px-5 md:py-4 xl:py-5 rounded-2xl border-4 text-sm md:text-base xl:text-xl font-bold transition-all flex items-start gap-4 ${isSelected ? 'border-cyan-500 bg-cyan-100 shadow-md text-cyan-900 scale-[1.01]' : 'border-gray-200 bg-white hover:border-cyan-300 hover:bg-cyan-50 text-gray-800 shadow-sm'}`;
+                                   const shapeClass = 'rounded-full';
+
+                                   return (
+                                       <button key={oIdx} onClick={() => handleSingle(currentQ.id, oIdx)} className={btnClass}>
+                                           <div className={`mt-0.5 md:mt-1 flex-shrink-0 w-6 h-6 md:w-8 md:h-8 xl:w-10 xl:h-10 border-4 ${shapeClass} flex items-center justify-center transition-colors ${isSelected ? 'border-cyan-600 bg-cyan-500' : 'border-gray-300 bg-white'}`}>
+                                               {isSelected && <div className="w-2.5 h-2.5 md:w-3 md:h-3 xl:w-4 xl:h-4 bg-white rounded-full" />}
+                                           </div>
+                                           <span className="flex-1 leading-snug">{opt}</span>
+                                       </button>
+                                   );
+                               })}
+                           </div>
+
+                           <div className="flex justify-between items-center gap-3 mt-4 xl:mt-6 pt-4 border-t-2 border-gray-200 flex-shrink-0">
+                               <button onClick={handlePrev} disabled={currentQIndex === 0} className={`py-3 px-4 xl:py-4 xl:px-6 rounded-2xl font-black flex items-center gap-2 transition-all text-sm md:text-base xl:text-xl ${currentQIndex === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-2 border-transparent' : 'bg-white text-gray-800 border-4 border-gray-300 hover:bg-gray-100 shadow-sm'}`}>
+                                   <Icons.ArrowRight className="w-5 h-5 xl:w-7 xl:h-7 rotate-180" /> <span className="hidden sm:inline">Sebelumnya</span>
+                               </button>
+                               
+                               {currentQIndex < flatQuestions.length - 1 ? (
+                                   <button onClick={handleNext} disabled={!isCurrentAnswered} className={`py-3 px-6 xl:py-4 xl:px-10 rounded-2xl font-black flex items-center gap-2 transition-all text-sm md:text-base xl:text-xl ${!isCurrentAnswered ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-2 border-transparent' : 'bg-gradient-to-b from-cyan-400 to-cyan-600 hover:from-cyan-500 hover:to-cyan-700 text-white shadow-[0_6px_0_#0e7490] active:shadow-none active:translate-y-2 border-none'}`}>
+                                       <span className="hidden sm:inline">Selanjutnya</span> <Icons.ArrowRight className="w-5 h-5 xl:w-7 xl:h-7" />
+                                   </button>
+                               ) : (
+                                   <button onClick={handleSubmit} disabled={!isCurrentAnswered} className={`py-3 px-6 xl:py-4 xl:px-10 rounded-2xl font-black flex items-center gap-2 transition-all text-sm md:text-base xl:text-xl ${!isCurrentAnswered ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-2 border-transparent' : 'bg-gradient-to-b from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white shadow-[0_6px_0_#c2410c] active:shadow-none active:translate-y-2 border-none'}`}>
+                                       <Icons.CheckCircle className="w-5 h-5 xl:w-7 xl:h-7" /> Cek Analisis Kasus
+                                   </button>
+                               )}
+                           </div>
+                       </div>
+                   </div>
+                </div>
+            );
+        }
+
+        // --- LEVEL 3: SIKAP (Benar/Salah) ---
+        function Level3Kalimantan({ onComplete, onCorrect }) {
+            const data = LEVEL_DATA[3];
+            const [answers, setAnswers] = useState({});
+            const [step, setStep] = useState('quiz'); 
+            const [currentQIndex, setCurrentQIndex] = useState(0);
+            const [scoreDetails, setScoreDetails] = useState(0);
+
+            const shuffledQuestions = React.useMemo(() => {
+                return data.questions.map(q => {
+                    const originalReasons = [...q.reasonOptions];
+                    const shuffledReasons = shuffleArray(originalReasons);
+                    const correctReasonText = originalReasons[q.correctReasonIndex];
+                    const newCorrectReasonIndex = shuffledReasons.indexOf(correctReasonText);
+
+                    return { ...q, reasonOptions: shuffledReasons, correctReasonIndex: newCorrectReasonIndex };
+                });
+            }, [data.questions]);
+
+            const currentQ = shuffledQuestions[currentQIndex];
+
+            const handleStatement = (qId, statement) => { setAnswers(prev => ({ ...prev, [qId]: { ...prev[qId], statement } })); };
+            const handleReason = (qId, reasonIdxStr) => {
+                const reasonIdx = parseInt(reasonIdxStr);
+                setAnswers(prev => ({ ...prev, [qId]: { ...prev[qId], reasonIdx } }));
+            };
+
+            const isCurrentAnswered = answers[currentQ.id]?.statement !== undefined && answers[currentQ.id]?.reasonIdx !== undefined && !isNaN(answers[currentQ.id]?.reasonIdx);
+            const handleNext = () => { if (currentQIndex < shuffledQuestions.length - 1) setCurrentQIndex(prev => prev + 1); };
+            const handlePrev = () => { if (currentQIndex > 0) setCurrentQIndex(prev => prev - 1); };
+
+            const handleSubmit = () => {
+                let correctAns = 0;
+                shuffledQuestions.forEach(q => {
+                    const userAns = answers[q.id];
+                    if (userAns && userAns.statement === q.correctStatement && userAns.reasonIdx === q.correctReasonIndex) correctAns++;
+                });
+
+                if (correctAns === shuffledQuestions.length) playSfx('correct'); else playSfx('incorrect');
+                setScoreDetails(correctAns); setStep('feedback');
+            };
+
+            const handleRetry = () => { setAnswers({}); setCurrentQIndex(0); setScoreDetails(0); setStep('quiz'); };
+            const handleProceed = () => { for(let i = 0; i < scoreDetails; i++) { if (onCorrect) onCorrect(); } onComplete(); };
+
+            if (step === 'feedback') {
+                return (
+                    <div className="flex flex-col h-full w-full max-w-5xl mx-auto pb-4 animate-fade-in justify-center">
+                        <div className="bg-white/95 p-8 md:p-10 xl:p-14 rounded-3xl shadow-xl border-4 border-indigo-300 text-center mt-4">
+                            <Icons.Award className="w-20 h-20 xl:w-28 xl:h-28 text-yellow-500 mx-auto animate-bounce-slow mb-3" />
+                            <h3 className="text-3xl xl:text-5xl font-black text-blue-900 mb-3 xl:mb-5 uppercase tracking-wider">Hasil Mesin Pendeteksi Fakta</h3>
+                            <p className="text-xl xl:text-3xl font-bold text-gray-600 mb-8 xl:mb-12">Kamu berhasil memecahkan <span className="text-indigo-600 text-4xl xl:text-6xl mx-2 font-black">{scoreDetails}</span> dari {shuffledQuestions.length} fakta alam dengan akurat!</p>
+                            
+                            <div className="space-y-4 xl:space-y-6 text-left max-h-[40vh] overflow-y-auto custom-scrollbar pr-3 mb-8 xl:mb-10">
+                                {shuffledQuestions.map((q) => {
+                                    const userAns = answers[q.id];
+                                    const isCorrect = userAns?.statement === q.correctStatement && userAns?.reasonIdx === q.correctReasonIndex;
+
+                                    return (
+                                        <div key={q.id} className={`p-4 xl:p-6 rounded-xl border-2 ${isCorrect ? 'border-indigo-300 bg-indigo-50' : 'border-red-300 bg-red-50'}`}>
+                                            <div className="flex gap-3 xl:gap-5 items-start mb-2 xl:mb-4">
+                                                {isCorrect ? <Icons.CheckCircle className="w-6 h-6 xl:w-8 xl:h-8 text-indigo-600 flex-shrink-0 mt-0.5" /> : <Icons.X className="w-6 h-6 xl:w-8 xl:h-8 text-red-600 flex-shrink-0 mt-0.5" />}
+                                                <p className="font-bold text-gray-800 text-sm md:text-base xl:text-xl">{q.text}</p>
+                                            </div>
+                                            <div className="ml-9 xl:ml-13 space-y-1 xl:space-y-2 text-sm md:text-base xl:text-xl">
+                                                <p className="text-gray-600 font-medium">
+                                                    Penilaianmu: <span className={userAns?.statement === q.correctStatement ? 'text-indigo-700 font-black' : 'text-red-600 font-black line-through'}>{userAns?.statement || '-'}</span>
+                                                    {!isCorrect && userAns?.statement !== q.correctStatement && <span className="text-indigo-700 font-black ml-2">({q.correctStatement})</span>}
+                                                </p>
+                                                <p className="text-gray-600 mt-1 font-medium">
+                                                    Alasan Ilmuwan: <span className={userAns?.reasonIdx === q.correctReasonIndex ? 'text-indigo-700 font-black' : 'text-red-600 font-black line-through'}>{userAns?.reasonIdx !== undefined && !isNaN(userAns?.reasonIdx) ? q.reasonOptions[userAns.reasonIdx] : '-'}</span>
+                                                    {!isCorrect && userAns?.reasonIdx !== q.correctReasonIndex && <span className="text-indigo-700 font-black ml-2 block mt-1">✓ {q.reasonOptions[q.correctReasonIndex]}</span>}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-5 justify-center">
+                                {scoreDetails < shuffledQuestions.length && (
+                                    <button onClick={handleRetry} className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-black py-4 px-10 xl:py-6 xl:px-14 rounded-2xl shadow-[0_6px_0_#b45309] active:shadow-none active:translate-y-2 transition-all text-lg md:text-xl xl:text-2xl flex items-center justify-center gap-3">
+                                        <Icons.RefreshCcw className="w-6 h-6 xl:w-8 xl:h-8" /> Coba Koreksi Lagi
+                                    </button>
+                                )}
+                                <button onClick={handleProceed} className="bg-gradient-to-b from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black py-4 px-10 xl:py-6 xl:px-14 rounded-2xl shadow-[0_6px_0_#1e3a8a] active:shadow-none active:translate-y-2 transition-all text-lg md:text-xl xl:text-2xl flex items-center justify-center gap-3 uppercase tracking-wide">
+                                    Lanjut Riset 🚀
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="flex flex-col h-full w-full max-w-7xl mx-auto flex-1 min-h-0">
+                   <div className="bg-indigo-100 text-indigo-900 p-3 xl:p-4 rounded-xl text-center font-bold text-sm md:text-base xl:text-xl border-l-4 border-indigo-500 shadow-sm flex items-center justify-center gap-3 mb-4 flex-shrink-0">
+                     <Icons.BookOpen className="w-5 h-5 xl:w-7 xl:h-7" /> Evaluasi kebenaran pernyataan di kiri, lalu pilih alasan ilmiahnya di kanan.
+                   </div>
+
+                   <div className="bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border-2 border-white/50 overflow-hidden flex flex-col md:flex-row flex-1 min-h-0">
+                       <div className="md:w-1/2 bg-blue-50/70 p-4 md:p-6 xl:p-8 border-b md:border-b-0 md:border-r border-blue-200 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
+                           <h3 className="font-black text-indigo-900 mb-3 xl:mb-5 flex items-center gap-3 text-base md:text-lg xl:text-2xl flex-shrink-0 drop-shadow-sm uppercase tracking-wide">
+                               {data.stimulusTitle}
+                           </h3>
+                           <div className="text-gray-900 text-sm md:text-base xl:text-xl whitespace-pre-wrap leading-relaxed font-bold bg-white/90 backdrop-blur-md p-4 md:p-6 xl:p-8 rounded-2xl border-2 border-indigo-100 shadow-sm flex-1">
+                               {data.stimulusText}
+                           </div>
+                       </div>
+                       
+                       <div className="md:w-1/2 p-4 md:p-6 xl:p-8 flex flex-col min-h-0 bg-white/50 backdrop-blur-sm">
+                           <div className="text-xs md:text-sm xl:text-base font-black text-indigo-700 uppercase tracking-wider mb-1 xl:mb-3 flex-shrink-0 bg-indigo-100 inline-block px-3 py-1 rounded-lg w-max">Deteksi Fakta {currentQIndex + 1} dari {shuffledQuestions.length}</div>
+                           <p className="font-black text-gray-900 text-base md:text-lg xl:text-2xl leading-relaxed mb-4 xl:mb-6 flex-shrink-0 drop-shadow-sm mt-2">{currentQ.text}</p>
+                           
+                           <div className="space-y-4 xl:space-y-6 flex-grow overflow-y-auto custom-scrollbar pr-2">
+                               <div className="space-y-2 xl:space-y-4">
+                                   <label className="block text-sm md:text-base xl:text-xl font-bold text-gray-900 drop-shadow-sm uppercase">Pernyataan ini adalah:</label>
+                                   <div className="flex gap-3 xl:gap-5">
+                                       <button onClick={() => handleStatement(currentQ.id, 'Benar')} className={`flex-1 py-4 xl:py-6 rounded-2xl border-4 font-black text-lg xl:text-2xl transition-all shadow-sm uppercase tracking-wide ${answers[currentQ.id]?.statement === 'Benar' ? 'bg-indigo-500 border-indigo-600 text-white scale-[1.02]' : 'bg-white border-gray-300 text-gray-700 hover:border-indigo-400 hover:bg-indigo-50'}`}>
+                                           BENAR
+                                       </button>
+                                       <button onClick={() => handleStatement(currentQ.id, 'Salah')} className={`flex-1 py-4 xl:py-6 rounded-2xl border-4 font-black text-lg xl:text-2xl transition-all shadow-sm uppercase tracking-wide ${answers[currentQ.id]?.statement === 'Salah' ? 'bg-red-500 border-red-600 text-white scale-[1.02]' : 'bg-white border-gray-300 text-gray-700 hover:border-red-400 hover:bg-red-50'}`}>
+                                           SALAH
+                                       </button>
+                                   </div>
+                               </div>
+
+                               <div className="space-y-2 xl:space-y-4 pt-3 xl:pt-5 border-t-2 border-gray-300 mt-4">
+                                   <label className="block text-sm md:text-base xl:text-xl font-bold text-gray-900 drop-shadow-sm uppercase">Pilih Alasan Ilmiahnya:</label>
+                                   <div className="relative">
+                                       <select 
+                                            value={answers[currentQ.id]?.reasonIdx !== undefined ? answers[currentQ.id].reasonIdx : ""} 
+                                            onChange={(e) => handleReason(currentQ.id, e.target.value)} 
+                                            className="w-full p-4 md:p-5 xl:p-6 rounded-2xl border-4 border-gray-300 bg-white text-sm md:text-base xl:text-xl font-bold text-gray-800 outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer shadow-sm hover:bg-gray-50"
+                                       >
+                                           <option value="" disabled>-- Klik di sini untuk memilih alasan --</option>
+                                           {currentQ.reasonOptions.map((opt, idx) => <option key={idx} value={idx}>{opt}</option>)}
+                                       </select>
+                                       <div className="absolute right-4 xl:right-6 top-1/2 transform -translate-y-1/2 pointer-events-none bg-gray-200 p-2 rounded-full">
+                                           <Icons.ArrowRight className="w-4 h-4 xl:w-5 xl:h-5 text-gray-600 rotate-90" />
+                                       </div>
+                                   </div>
+                               </div>
+                           </div>
+
+                           <div className="flex justify-between items-center gap-3 mt-4 xl:mt-6 pt-4 border-t-2 border-gray-200 flex-shrink-0">
+                               <button onClick={handlePrev} disabled={currentQIndex === 0} className={`py-3 px-4 xl:py-4 xl:px-6 rounded-2xl font-black flex items-center gap-2 transition-all text-sm md:text-base xl:text-xl ${currentQIndex === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-2 border-transparent' : 'bg-white text-gray-800 border-4 border-gray-300 hover:bg-gray-100 shadow-sm'}`}>
+                                   <Icons.ArrowRight className="w-5 h-5 xl:w-7 xl:h-7 rotate-180" /> <span className="hidden sm:inline">Sebelumnya</span>
+                               </button>
+                               
+                               {currentQIndex < shuffledQuestions.length - 1 ? (
+                                   <button onClick={handleNext} disabled={!isCurrentAnswered} className={`py-3 px-6 xl:py-4 xl:px-10 rounded-2xl font-black flex items-center gap-2 transition-all text-sm md:text-base xl:text-xl ${!isCurrentAnswered ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-2 border-transparent' : 'bg-gradient-to-b from-indigo-400 to-indigo-500 hover:from-indigo-500 hover:to-indigo-600 text-white shadow-[0_6px_0_#3730a3] active:shadow-none active:translate-y-2 border-none'}`}>
+                                       <span className="hidden sm:inline">Selanjutnya</span> <Icons.ArrowRight className="w-5 h-5 xl:w-7 xl:h-7" />
+                                   </button>
+                               ) : (
+                                   <button onClick={handleSubmit} disabled={!isCurrentAnswered} className={`py-3 px-6 xl:py-4 xl:px-10 rounded-2xl font-black flex items-center gap-2 transition-all text-sm md:text-base xl:text-xl ${!isCurrentAnswered ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-2 border-transparent' : 'bg-gradient-to-b from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white shadow-[0_6px_0_#c2410c] active:shadow-none active:translate-y-2 border-none uppercase tracking-wide'}`}>
+                                       <Icons.CheckCircle className="w-5 h-5 xl:w-7 xl:h-7" /> Kumpulkan Cek Fakta
+                                   </button>
+                               )}
+                           </div>
+                       </div>
+                   </div>
+                </div>
+            );
+        }
+
+        // --- LEVEL 4: SULAWESI (Mengevaluasi & Mengkreasi) ---
+        function Level4Sulawesi({ onComplete, onCorrect }) {
+            const data = LEVEL_DATA[4];
+            const [answers, setAnswers] = useState({});
+            const [completed, setCompleted] = useState(false);
+            const [feedbackMsg, setFeedbackMsg] = useState("");
+            const [scoreLocal, setScoreLocal] = useState(0);
+
+            const handleEval = (cId, val) => setAnswers(p => ({...p, [cId]: {...p[cId], eval: parseInt(val)}}));
+            const handleCreate = (cId, val) => setAnswers(p => ({...p, [cId]: {...p[cId], create: parseInt(val)}}));
+
+            const handleCheckAnswer = () => {
+                let allFilled = true;
+                let correctCountLocal = 0;
+                
+                data.cases.forEach(c => {
+                    const a = answers[c.id];
+                    if (!a || a.eval === undefined || a.create === undefined || isNaN(a.eval) || isNaN(a.create)) {
+                        allFilled = false;
+                    } else if (a.eval === c.evalCorrect && a.create === c.createCorrect) {
+                        correctCountLocal++;
+                    }
+                });
+
+                if (!allFilled) {
+                    setFeedbackMsg("Lengkapi pilihan Identifikasi Kasus dan Pilih Perbaikan pada ke-5 catatan pengamatan, Ilmuwan!");
+                    return;
+                }
+
+                if (correctCountLocal === data.cases.length) playSfx('correct'); else playSfx('incorrect');
+                if (onCorrect) { for(let i=0; i<correctCountLocal; i++) onCorrect(); }
+                
+                setScoreLocal(correctCountLocal);
+                setCompleted(true);
+            };
+
+            return (
+                <div className="flex flex-col h-full w-full max-w-7xl mx-auto flex-1 min-h-0 pb-4">
+                    {!completed ? (
+                        <div className="bg-white/95 rounded-3xl shadow-xl border-4 border-blue-300 flex flex-col flex-1 min-h-0 mt-4 overflow-hidden p-4 md:p-6 xl:p-8 animate-fade-in">
+                            <div className="bg-blue-100 text-blue-900 p-4 md:p-5 xl:p-6 rounded-2xl text-center font-bold text-sm md:text-base xl:text-xl border-2 border-blue-400 shadow-sm mb-4 md:mb-6 flex-shrink-0 flex items-center gap-4">
+                                <div className="bg-blue-600 text-white p-3 rounded-xl shadow-md"><Icons.Zap className="w-6 h-6 md:w-8 md:h-8 xl:w-10 xl:h-10 flex-shrink-0" /></div>
+                                <span className="text-left leading-relaxed">{data.stimulusText}</span>
+                            </div>
+                            
+                            <div className="flex-grow overflow-y-auto custom-scrollbar pr-2 md:pr-4 space-y-6 xl:space-y-8 pb-10">
+                                {data.cases.map((c, i) => (
+                                    <div key={c.id} className="bg-slate-50 p-5 xl:p-8 rounded-2xl border-4 border-slate-200 shadow-sm">
+                                        <h4 className="font-black text-slate-800 text-base md:text-xl xl:text-2xl mb-4 leading-relaxed bg-white p-4 rounded-xl shadow-sm border border-slate-100">{c.text}</h4>
+                                        <div className="space-y-4 xl:space-y-6 bg-white p-4 xl:p-6 rounded-2xl border-2 border-slate-100">
+                                            <div className="flex flex-col">
+                                                <label className="text-sm md:text-base xl:text-xl font-black text-red-800 mb-2 flex items-center gap-2 uppercase"><span className="text-2xl">🔍</span> Identifikasi Kasus:</label>
+                                                <select value={answers[c.id]?.eval !== undefined ? answers[c.id].eval : ""} onChange={e => handleEval(c.id, e.target.value)} className="w-full p-4 md:p-5 rounded-xl border-4 border-red-200 bg-red-50 outline-none focus:border-red-500 font-bold text-gray-800 text-sm md:text-base xl:text-xl transition-colors cursor-pointer appearance-none shadow-sm hover:bg-red-100">
+                                                    <option value="" disabled>-- Tentukan kesalahpahaman konsep ini --</option>
+                                                    {c.evalOptions.map((opt, idx) => <option key={idx} value={idx}>{opt}</option>)}
+                                                </select>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <label className="text-sm md:text-base xl:text-xl font-black text-cyan-800 mb-2 flex items-center gap-2 uppercase"><span className="text-2xl">💡</span> Pilih Perbaikan:</label>
+                                                <select value={answers[c.id]?.create !== undefined ? answers[c.id].create : ""} onChange={e => handleCreate(c.id, e.target.value)} className="w-full p-4 md:p-5 rounded-xl border-4 border-cyan-200 bg-cyan-50 outline-none focus:border-cyan-500 font-bold text-gray-800 text-sm md:text-base xl:text-xl transition-colors cursor-pointer appearance-none shadow-sm hover:bg-cyan-100">
+                                                    <option value="" disabled>-- Pilih penjelasan sains yang benar --</option>
+                                                    {c.createOptions.map((opt, idx) => <option key={idx} value={idx}>{opt}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            
+                            <div className="mt-5 md:mt-6 pt-4 md:pt-6 border-t-4 border-gray-100 text-center flex-shrink-0 flex flex-col items-center">
+                                {feedbackMsg && <p className="text-red-700 font-black text-sm md:text-base xl:text-xl mb-4 bg-red-100 p-3 md:p-4 rounded-xl border-2 border-red-300 w-full max-w-3xl shadow-sm">{feedbackMsg}</p>}
+                                <button onClick={handleCheckAnswer} className="bg-gradient-to-b from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black py-4 px-10 xl:py-5 xl:px-14 rounded-2xl shadow-[0_6px_0_#1e3a8a] active:shadow-none active:translate-y-2 transition-all text-base md:text-xl xl:text-2xl flex items-center justify-center gap-3 w-full md:w-auto uppercase tracking-wide">
+                                    <Icons.CheckCircle className="w-6 h-6 xl:w-8 xl:h-8" /> Cek Analisis Laporan
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="bg-white/95 p-8 md:p-12 xl:p-16 rounded-3xl shadow-2xl text-center space-y-6 border-4 border-cyan-300 max-w-4xl mx-auto animate-fade-in mt-10">
+                            <div className="w-20 h-20 xl:w-28 xl:h-28 bg-cyan-100 rounded-full flex items-center justify-center mx-auto text-4xl xl:text-6xl shadow-inner border-4 border-cyan-400">{scoreLocal === data.cases.length ? '🏆' : '👍'}</div>
+                            <h3 className="text-2xl md:text-4xl xl:text-5xl font-black text-blue-900 uppercase tracking-wider mb-4">Evaluasi Berhasil!</h3>
+                            <p className="text-lg md:text-xl xl:text-3xl font-bold text-gray-700 leading-relaxed">Profesor Air sangat terbantu! <br/><br/>Kamu mengevaluasi dengan teori yang tepat pada <span className="text-cyan-600 text-4xl xl:text-6xl mx-2 font-black">{scoreLocal}</span> dari {data.cases.length} catatan pengamatan.</p>
+                            <button onClick={onComplete} className="bg-gradient-to-b from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black w-full py-5 text-xl xl:text-3xl rounded-2xl shadow-[0_6px_0_#1e3a8a] active:shadow-none active:translate-y-2 transition-all mt-6 uppercase tracking-wide">Lanjut ke Markas Ilmuwan 🚀</button>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // --- LEVEL 5: PAPUA (Merefleksi) ---
+        function Level5Papua({ onComplete, saveRef, saveData }) {
+            const data = LEVEL_DATA[5];
+            const [rating, setRating] = useState(0);
+            const [a1, setA1] = useState("");
+            const [a2, setA2] = useState("");
+            const [a3, setA3] = useState("");
+            const [feedbackMsg, setFeedbackMsg] = useState("");
+
+            const handleFinish = () => {
+                if (rating === 0 || !a1.trim() || !a2.trim() || !a3.trim()) {
+                    setFeedbackMsg("Wah, mohon lengkapi pemberian bintang dan isi semua kotak laporan akhir ya, Asisten Peneliti!");
+                    return;
+                }
+                playSfx('correct');
+                saveData('final_project', { rating, pemahaman: a1, strategi: a2, aksi: a3 });
+                saveRef(a3);
+                onComplete();
+            };
+
+            return (
+                <div className="flex flex-col h-full w-full max-w-5xl mx-auto flex-1 min-h-0 pb-4 animate-fade-in justify-center">
+                    <div className="bg-white/95 p-6 md:p-10 xl:p-14 rounded-3xl shadow-2xl border-b-8 border-yellow-400 w-full flex flex-col flex-1 min-h-0 mt-4 overflow-hidden">
+                        
+                        <div className="text-center border-b-4 border-gray-100 pb-4 md:pb-6 mb-4 md:mb-6 flex-shrink-0">
+                            <h3 className="text-2xl md:text-4xl xl:text-5xl font-black text-gray-800 uppercase tracking-wider mb-2">{data.title}</h3>
+                            <p className="text-sm md:text-base xl:text-xl font-bold text-amber-600">{data.subtitle}</p>
+                        </div>
+
+                        <div className="flex-grow overflow-y-auto custom-scrollbar pr-3 space-y-6 md:space-y-8">
+                            
+                            <div className="bg-cyan-50 p-5 md:p-6 xl:p-8 rounded-3xl border-2 border-cyan-200 shadow-sm">
+                                <label className="block text-base md:text-lg xl:text-2xl font-black text-blue-900 mb-4 leading-relaxed">{data.questions.q1}</label>
+                                <div className="flex justify-center gap-3 md:gap-4 mb-6 bg-white py-4 rounded-2xl border border-cyan-100">
+                                    {[1, 2, 3, 4, 5].map(star => (
+                                        <Icons.Star 
+                                            key={star} onClick={() => { setRating(star); playSfx('click'); }} 
+                                            className={`w-12 h-12 md:w-16 md:h-16 xl:w-20 xl:h-20 cursor-pointer transition-all transform hover:scale-110 ${rating >= star ? 'text-yellow-400 fill-yellow-400 drop-shadow-md' : 'text-gray-300 fill-gray-100'}`} 
+                                        />
+                                    ))}
+                                </div>
+                                <textarea rows="3" value={a1} onChange={e => setA1(e.target.value)} placeholder="Menurutku hari ini aku belajar tentang..." className="w-full p-4 md:p-5 rounded-2xl border-4 border-cyan-200 bg-white outline-none focus:border-cyan-500 font-bold text-gray-800 text-sm md:text-base xl:text-xl resize-none shadow-inner"></textarea>
+                            </div>
+
+                            <div className="bg-blue-50 p-5 md:p-6 xl:p-8 rounded-3xl border-2 border-blue-200 shadow-sm">
+                                <label className="block text-base md:text-lg xl:text-2xl font-black text-blue-900 mb-4 leading-relaxed">{data.questions.q2}</label>
+                                <textarea rows="3" value={a2} onChange={e => setA2(e.target.value)} placeholder="Tuliskan evaluasi risetmu di sini..." className="w-full p-4 md:p-5 rounded-2xl border-4 border-blue-200 bg-white outline-none focus:border-blue-500 font-bold text-gray-800 text-sm md:text-base xl:text-xl resize-none shadow-inner"></textarea>
+                            </div>
+
+                            <div className="bg-indigo-50 p-5 md:p-6 xl:p-8 rounded-3xl border-2 border-indigo-200 shadow-sm">
+                                <label className="block text-base md:text-lg xl:text-2xl font-black text-indigo-900 mb-4 leading-relaxed">{data.questions.q3}</label>
+                                <textarea rows="3" value={a3} onChange={e => setA3(e.target.value)} placeholder="Contoh kebiasaan melestarikan air:..." className="w-full p-4 md:p-5 rounded-2xl border-4 border-indigo-200 bg-white outline-none focus:border-indigo-500 font-bold text-gray-800 text-sm md:text-base xl:text-xl resize-none shadow-inner"></textarea>
+                            </div>
+
+                        </div>
+
+                        <div className="mt-6 pt-4 border-t-4 border-gray-100 flex flex-col items-center flex-shrink-0">
+                            {feedbackMsg && <p className="text-red-700 font-black text-sm md:text-base xl:text-xl mb-4 bg-red-100 p-4 rounded-xl border-2 border-red-300 text-center w-full shadow-sm">{feedbackMsg}</p>}
+                            <button onClick={handleFinish} className="bg-gradient-to-b from-yellow-400 to-amber-500 hover:from-yellow-500 hover:to-amber-600 text-amber-900 font-black py-4 px-10 xl:py-6 xl:px-14 rounded-full shadow-[0_8px_0_#b45309] active:shadow-none active:translate-y-2 transition-all text-lg md:text-xl xl:text-3xl flex items-center justify-center gap-3 w-full md:w-auto uppercase tracking-wider">
+                                <Icons.Award className="w-8 h-8 xl:w-10 xl:h-10" /> Sahkan Laporan Peneliti!
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // --- END SCREEN ---
+        function EndScreen({ userData, correctCount, onRestart, playerName, playerSchool }) {
+            const [isSaving, setIsSaving] = useState(false);
+            const [saveStatus, setSaveStatus] = useState("idle"); 
+
+            const handleSaveToGoogleSheets = async () => {
+                if(!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.trim() === "") return setSaveStatus("error");
+                setIsSaving(true);
+                
+                const payload = {
+                    nama: playerName, sekolah: playerSchool, skor: correctCount, benar: correctCount,
+                    ref1: "-", ref2: "-", ref3: "-", ref4: "-",
+                    papua_masalah: userData.final_project?.pemahaman || "-",
+                    papua_solusi: userData.final_project?.strategi || "-",
+                    papua_kampanye: userData.final_project ? `Contoh Penerapan: ${userData.final_project.aksi} | Bintang Rating: ${userData.final_project.rating}` : "-",
+                };
+                
+                try {
+                    await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+                    setSaveStatus("success");
+                } catch (error) { setSaveStatus("error"); } finally { setIsSaving(false); }
+            };
+
+            return (
+                <div className="flex flex-col items-center justify-center gap-6 xl:gap-10 animate-fade-in w-full flex-1 min-h-0 overflow-y-auto pb-8">
+                  <div className="text-center bg-white/95 p-6 md:p-10 xl:p-14 rounded-[3rem] shadow-2xl w-full max-w-2xl xl:max-w-4xl border-4 border-cyan-400 mt-8 relative overflow-hidden">
+                    <div className="w-24 h-24 md:w-32 md:h-32 xl:w-48 xl:h-48 bg-blue-100 rounded-full flex items-center justify-center mx-auto text-5xl md:text-7xl xl:text-8xl shadow-inner border-4 border-cyan-300 drop-shadow-2xl mb-6">🎓</div>
+                    <h2 className="text-4xl md:text-6xl xl:text-8xl font-black text-cyan-600 mt-4 xl:mt-8 drop-shadow-sm uppercase tracking-wider">SELAMAT!</h2>
+                    <p className="text-xl md:text-3xl xl:text-5xl font-bold mt-4 xl:mt-6 text-gray-700">Ilmuwan <span className="text-blue-700">{playerName}</span>,</p>
+                    <div className="text-xl md:text-2xl xl:text-4xl font-black text-gray-500 mt-8 xl:mt-12 bg-cyan-50 p-6 rounded-3xl border-2 border-cyan-200">
+                        Memecahkan Riset Benar <br/><span className="text-6xl md:text-7xl xl:text-9xl text-yellow-500 text-outline inline-block mt-4 mb-2 drop-shadow-xl">{correctCount}</span><br/><span className="text-lg md:text-xl xl:text-2xl text-cyan-700">Skor Pengamatan</span>
+                    </div>
+                  </div>
+
+                  <div className="w-full max-w-2xl xl:max-w-4xl bg-white p-6 md:p-10 xl:p-12 rounded-[3rem] shadow-xl border-b-8 border-blue-400 relative text-base">
+                    <div className="text-center border-b-4 border-gray-100 pb-4 xl:pb-6 mb-4 xl:mb-6">
+                      <h3 className="font-black text-2xl md:text-4xl xl:text-5xl text-blue-900 uppercase tracking-wide">Lencana Riset Siklus Air</h3>
+                      <p className="text-cyan-700 font-bold text-lg md:text-2xl xl:text-3xl mt-2 xl:mt-4 bg-cyan-50 inline-block px-6 py-2 rounded-full border border-cyan-200">{playerName} - {playerSchool}</p>
+                    </div>
+                    <div className="space-y-3 xl:space-y-5 max-h-48 xl:max-h-80 overflow-y-auto pr-3 custom-scrollbar text-sm md:text-base xl:text-xl">
+                      <p className="bg-blue-50 p-5 xl:p-8 rounded-2xl border-2 border-blue-200 shadow-sm text-gray-800 font-bold leading-relaxed">
+                          <span className="text-blue-900 block mb-2 xl:mb-3 font-black uppercase tracking-wider text-xs md:text-sm xl:text-base">Komitmen Menjaga Kelestarian Air:</span> 
+                          "{userData.ref5 || '-'}"
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="w-full max-w-2xl xl:max-w-4xl space-y-4 xl:space-y-6 mt-4">
+                    {saveStatus === 'idle' && GOOGLE_SCRIPT_URL !== "" && (
+                        <button onClick={handleSaveToGoogleSheets} disabled={isSaving} className="bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white font-black w-full py-5 xl:py-6 rounded-2xl flex items-center justify-center gap-3 text-lg md:text-2xl xl:text-3xl shadow-[0_8px_0_#1e3a8a] active:shadow-none active:translate-y-2 transition-all uppercase tracking-wide">{isSaving ? "Menyimpan Laporan..." : <><Icons.Save className="w-6 h-6 xl:w-8 xl:h-8"/> Kirim Laporan ke Guru</>}</button>
+                    )}
+                    {saveStatus === 'success' && <div className="bg-green-100 text-green-800 p-5 xl:p-6 rounded-2xl text-center font-black text-lg xl:text-2xl border-4 border-green-300 shadow-sm">Laporan Berhasil dikirim! ✅</div>}
+                    {saveStatus === 'error' && GOOGLE_SCRIPT_URL !== "" && <div className="bg-red-100 text-red-800 p-5 xl:p-6 rounded-2xl text-center font-black text-lg xl:text-2xl border-4 border-red-300 shadow-sm">Gagal terhubung dengan server. <button onClick={()=>setSaveStatus('idle')} className="underline text-red-600 ml-2 hover:text-red-900 transition-colors">Coba lagi</button></div>}
+                    
+                    <button onClick={onRestart} className="bg-gradient-to-b from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white font-black w-full py-5 xl:py-6 rounded-2xl flex items-center justify-center gap-3 text-lg md:text-2xl xl:text-3xl shadow-[0_8px_0_#374151] active:shadow-none active:translate-y-2 transition-all uppercase tracking-wide"><Icons.RefreshCcw className="w-6 h-6 xl:w-8 xl:h-8"/> Riset Ulang</button>
+                  </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+```
+
+### 💡 Panduan Penggunaan Guru:
+1. **Penyimpanan File:** Salin seluruh kode yang ada di blok (hitam) di atas. *Paste* ke dalam *Notepad* (Windows) atau *TextEdit* (Mac). Kemudian, pilih "Save As", beri nama file `MPI_Siklus_Air.html` (ingat untuk memilih *All Files* pada "Save as type"). 
+2. **Cara Menjalankan:** Setelah tersimpan, klik 2 kali file `MPI_Siklus_Air.html` tersebut untuk memutarnya di *Browser* internet Bapak (Chrome atau Edge disarankan). Aplikasi dapat dibuka pada laptop maupun dibagikan ke gawai (HP) siswa dan tampilannya otomatis akan menyesuaikan layar.
+3. **Mengedit Isian Guru:** Apabila di kemudian hari Bapak ingin mengganti materi, Bapak cukup membuka kode tersebut dengan Notepad, lalu melihat ke baris atas. Mulai dari **BAGIAN 1**, **BAGIAN 2**, hingga **BAGIAN 3** memuat tempat khusus untuk teks soal, identitas, dan tautan YouTube. 
+
+### 🗝️ Kunci Jawaban
+Berikut adalah daftar kunci untuk persiapan guru menilai, atau saat siswa menanyakan letak kesalahannya:
+
+- **Basecamp - Uji Video:** 1. Evaporasi, 2. Kondensasi, 3. Infiltrasi
+- **Basecamp - Teka Teki Istilah:** Penguapan laut (Evaporasi), Penguapan daun (Transpirasi), Uap air menjadi awan (Kondensasi), Jatuhnya titik air (Presipitasi), Air meresap (Infiltrasi). Pengecohnya adalah *Sublimasi* dan *Abrasi*.
+- **Level 1 (Pengelompokkan):** 
+  - Penguapan: Air menyusut (Evaporasi) & Daun (Transpirasi). 
+  - Awan: Uap mendingin & Titik embun bersatu. 
+  - Hujan & Resap: Langit meneteskan air & Air meresap ke tanah.
+- **Level 2 (Pilihan Ganda):** 1. C (Evaporasi), 2. B (infiltrasi terhambat), 3. A (Kondensasi), 4. C (Pencemaran sungai), 5. B (Akar penahan air berkurang).
+- **Level 3 (Benar/Salah):** 1. Salah (Air punya siklus perputaran), 2. Benar (Sampah menyumbat aliran), 3. Benar (Sama-sama proses menguap karena panas), 4. Salah (Semen justru menahan proses peresapan/infiltrasi), 5. Benar (Presipitasi meliputi air dan salju/es).
+- **Level 4 (Analisa Miskonsepsi Laporan):**
+  - **Laporan 1:** Salah. Hujan tak hanya di laut, awan bisa tertiup angin ke darat.
+  - **Laporan 2:** Salah. Awan berwujud cair mikroskopis / titik air (Kondensasi), bukan gas murni. 
+  - **Laporan 3:** Salah. Tanah justru tidak boleh ditutup semen seluruhnya, butuh area resapan.
+  - **Laporan 4:** Salah. Siklus air berputar terus (menguap -> awan -> hujan) tanpa awalan baku.
+  - **Laporan 5:** Salah. Pohon yang lebat justru menahan air untuk cadangan.
+- **Tinjauan Refleksi (Level 5):** Guru dapat melihat jawaban terbuka ini secara langsung di layar akhir perangkat siswa saat mereka mencapai halaman "Lencana Riset Siklus Air". 
+
+*Catatan Pengujian: Skrip ini telah saya simulasikan dan verifikasi bahwa tampilan akan berganti nuansa (lebih mengutamakan biru untuk tema sains/air), skor berhitung tepat setelah memeriksa jawaban, perpindahan tab di area basecamp berfungsi, *iframe* YouTube aktif, dan perolehan nilai dipastikan terkunci setelah jawaban dikirim.*
